@@ -1,0 +1,2 @@
+import 'package:socket_io_client/socket_io_client.dart' as io;import '../config.dart';import 'api_service.dart';
+class RealtimeService {io.Socket? socket;void connect(void Function() onChange){socket=io.io(Config.socketUrl,io.OptionBuilder().setTransports(['websocket']).setAuth({'token':ApiService.instance.token}).disableAutoConnect().build());for(final event in ['table:changed','tab:opened','tab:closed','order:created','order:updated','service:called']){socket!.on(event,(_)=>onChange());}socket!.connect();}void dispose()=>socket?.dispose();}

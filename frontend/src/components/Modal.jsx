@@ -1,0 +1,2 @@
+import { X } from 'lucide-react';
+export default function Modal({open,onClose,title,subtitle,children,wide=false}){if(!open)return null;return <div className="modal-backdrop" onMouseDown={onClose}><div className={`modal ${wide?'modal-wide':''}`} onMouseDown={e=>e.stopPropagation()}><button className="close" onClick={onClose}><X/></button><small>{subtitle}</small><h2>{title}</h2>{children}</div></div>}

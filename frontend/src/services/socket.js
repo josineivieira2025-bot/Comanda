@@ -1,0 +1,2 @@
+import { io } from 'socket.io-client';import { getToken } from './api';
+let socket;export function connectSocket(onChange){if(socket)socket.disconnect();socket=io(import.meta.env.VITE_SOCKET_URL||'http://localhost:3001',{auth:{token:getToken()}});['table:changed','table:deleted','tab:opened','tab:closed','order:created','order:updated','stock:changed','service:called'].forEach(event=>socket.on(event,payload=>onChange(event,payload)));return()=>socket?.disconnect()}
