@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Plus, XCircle, ChefHat, CheckCircle2 } from 'lucide-react';
+import { Plus, CheckCircle2 } from 'lucide-react';
 import { useSearchParams } from 'react-router-dom';
 import PageHeader from '../components/PageHeader';
 import Modal from '../components/Modal';
@@ -12,7 +12,6 @@ export default function Orders() {
   const [params, setParams] = useSearchParams();
   const [open, setOpen] = useState(params.get('novo') === '1');
   useEffect(() => { if (params.get('novo') === '1') setOpen(true); }, [params]);
-  const next = { open: 'preparing', preparing: 'ready', ready: 'delivered' };
   const closeModal = () => { setOpen(false); setParams({}); };
 
   return <>
@@ -25,7 +24,7 @@ export default function Orders() {
         <td><b>Comanda #{String(order.commandCardNumber || '').padStart(3, '0')}</b><small>Mesa {table?.number || '—'} · {client?.name || 'Não identificado'}</small></td>
         <td>{order.items.map(item => <span className="item-line" key={item.id}>{item.qty}× {data.products.find(product => product.id === item.productId)?.name}</span>)}</td>
         <td><b>{money(orderTotal(order))}</b></td><td><StatusBadge status={order.status} /></td>
-        <td><div className="row-actions">{can('orders.edit') && next[order.status] && <button className="action-green" onClick={() => updateOrder(order.id, next[order.status])}>{order.status === 'ready' ? <CheckCircle2 /> : <ChefHat />}{order.status === 'open' ? 'Enviar cozinha' : order.status === 'preparing' ? 'Marcar pronto' : 'Entregar'}</button>}{can('orders.edit') && !['cancelled', 'delivered'].includes(order.status) && <button className="action-danger" onClick={() => updateOrder(order.id, 'cancelled')}><XCircle /> Cancelar</button>}</div></td>
+        <td><div className="row-actions">{can('orders.edit') && order.status === 'ready' ? <button className="action-green" onClick={() => updateOrder(order.id, 'delivered')}><CheckCircle2 /> Marcar como entregue</button> : <span>—</span>}</div></td>
       </tr>;
     })}</tbody></table></div></section>
     <Modal open={open && can('orders.edit')} onClose={closeModal} title="Novo pedido" subtitle="LANÇAMENTO" wide><OrderForm onDone={closeModal} /></Modal>
