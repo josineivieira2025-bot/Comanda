@@ -1,0 +1,120 @@
+:root {
+  --ink: #0d1813;
+  --muted: #53635b;
+  --line: #cfd8d3;
+  --green: #117a57;
+  --canvas: #f8faf9;
+}
+
+body,
+.main-area { background: var(--canvas); color: var(--ink); }
+.main-area > header { border-bottom-color: #ccd6d1; background: #fff; }
+.content { color: #17221d; }
+
+.search { color: #5d6c65; }
+.search input { color: #25332c; font-size: 13px; }
+.search input::placeholder,
+input::placeholder,
+textarea::placeholder { color: #7a8982; opacity: 1; }
+
+.page-heading { border-bottom-color: #ccd6d1; }
+.page-heading small { color: #16785a; font-size: 10px; font-weight: 800; }
+.page-heading h1 { color: #08140f; font-weight: 650; }
+.page-heading p { color: #4d5e56; font-size: 14px; font-weight: 450; }
+
+.resource-tabs { border-bottom-color: #cdd7d2; }
+.resource-tabs button { color: #53635b; font-size: 13px; }
+.resource-tabs button.active { color: #0e7754; }
+.resource-tabs button span { color: #4f6158; background: #e5ece8; }
+
+.summary-strip { border-block-color: #ccd6d1; }
+.summary-strip span { color: #526159; font-size: 12px; }
+.summary-strip b { color: #0b1711; font-size: 20px; font-weight: 700; }
+
+.metric-card > span,
+.finance-metric span { color: #53635b; font-size: 12px; font-weight: 550; }
+.metric-card > strong,
+.finance-metric strong { color: #0b1711; font-weight: 650; }
+.metric-card > small,
+.finance-metric small { color: #64736c; font-size: 10px; }
+
+.panel,
+.data-panel,
+.tables-grid,
+.kds-board,
+.menu-admin-grid,
+.waiter-grid { border-color: #ccd6d1; }
+.panel-head { border-bottom-color: #d5ddd9; }
+.panel-head h2 { color: #101c16; font-weight: 650; }
+.panel-head p { color: #5e6d66; font-size: 11px; }
+
+th {
+  color: #52645b;
+  font-size: 10px;
+  font-weight: 750;
+  letter-spacing: .7px;
+  background: #f2f6f4;
+  border-bottom-color: #ccd6d1;
+}
+td { color: #34443c; font-size: 12px; border-bottom-color: #dce3df; }
+td > b { color: #0d1813; font-weight: 700; }
+td > small { color: #64746c; font-size: 9px; }
+.item-line { color: #46574e; font-size: 10px; }
+
+.table-card { border-bottom-color: #d4ddd8; }
+.table-card-head small { color: #607168; font-size: 9px; font-weight: 700; }
+.table-card-head h2 { color: #07130e; font-weight: 650; }
+.table-card-body > span,
+.table-card-body > small { color: #596a61; font-size: 11px; }
+.table-card-body > b { color: #07805a; font-size: 17px; font-weight: 700; }
+
+.status-badge { color: #4e5e56; font-size: 9px; font-weight: 700; }
+.status-occupied,
+.status-preparing { color: #08704e; background: #dff2e9; }
+.status-delivered { color: #43534b; background: #e9eeeb; }
+.status-open { color: #9b5d17; background: #fff0d9; }
+
+.primary { background: #117f5b; border-color: #117f5b; font-weight: 700; }
+.primary:hover { background: #0b6f4d; }
+.secondary,
+.outline,
+.card-actions button,
+.card-actions a,
+.row-actions button { color: #405149; border-color: #ccd6d1; font-weight: 600; }
+.icon-btn { color: #42534a; border-color: #cdd7d2; }
+
+.sector-tabs button { color: #52635a; font-size: 10px; font-weight: 650; }
+.kds-card-head small { color: #5a6b62; font-weight: 700; }
+.kds-card-head h2 { color: #0b1711; }
+.kds-items b { color: #18251f; font-size: 11px; }
+.kds-items span { color: #617169; font-weight: 650; }
+.timer { font-weight: 650; }
+
+.receivable-info b,
+.history-list b,
+.compact-list b { color: #14211b; }
+.receivable-info span,
+.receivable-info small,
+.history-list small,
+.compact-list small { color: #5f7067; }
+
+label { color: #4c5d54; font-size: 11px; }
+input,
+select,
+textarea { color: #1e2c25; border-color: #cbd5d0; font-size: 12px; }
+
+.sidebar a { color: #a9b6b0; }
+.sidebar a:hover,
+.sidebar a.active { color: #fff; }
+.sidebar nav > small { color: #82918a; }
+.unit-picker small,
+.unit-picker span { color: #91a099; }
+
+.waiter-heading p { color: #52625a; font-size: 11px; }
+.waiter-grid article > small { color: #5d6d65; font-size: 10px; }
+.waiter-grid article > b { color: #087c57; font-weight: 700; }
+
+@media (max-width: 700px) {
+  .page-heading p { font-size: 13px; }
+  th { font-size: 9px; }
+}
