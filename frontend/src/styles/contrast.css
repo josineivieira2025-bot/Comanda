@@ -114,7 +114,113 @@ textarea { color: #1e2c25; border-color: #cbd5d0; font-size: 12px; }
 .waiter-grid article > small { color: #5d6d65; font-size: 10px; }
 .waiter-grid article > b { color: #087c57; font-weight: 700; }
 
+/* Escala de leitura inspirada em painéis administrativos densos. */
+body { font-size: 15px; }
+.page-heading h1 { font-size: 26px; line-height: 1.2; }
+.page-heading small { font-size: 11px; letter-spacing: 1.35px; }
+.page-heading p { font-size: 15px; line-height: 1.55; }
+
+.search input { font-size: 14px; }
+.sidebar a { font-size: 14px; }
+.sidebar nav > small { font-size: 11px; }
+.unit-picker small,
+.unit-picker span { font-size: 11px; }
+.unit-picker b { font-size: 14px; }
+.profile b { font-size: 13px; }
+.profile span { font-size: 11px; }
+
+.primary,
+.secondary,
+.outline { font-size: 13px; }
+.card-actions button,
+.card-actions a,
+.row-actions button { font-size: 12px; }
+.text-button { font-size: 12px; }
+.live { font-size: 12px; }
+
+.resource-tabs button { font-size: 14px; }
+.resource-tabs button span { font-size: 11px; }
+.summary-strip span { font-size: 13px; }
+.summary-strip b { font-size: 21px; }
+
+.metric-card > span,
+.finance-metric span { font-size: 13px; }
+.metric-card > strong,
+.finance-metric strong { font-size: 28px; }
+.metric-card > small,
+.finance-metric small { font-size: 11px; }
+
+.panel-head h2 { font-size: 18px; }
+.panel-head p { font-size: 13px; line-height: 1.45; }
+.section-kicker { font-size: 11px; }
+.receivable-count { font-size: 12px; }
+
+th { height: 54px; font-size: 12px; }
+td { padding-block: 18px; font-size: 14px; }
+td > small { font-size: 11px; margin-top: 5px; }
+.item-line { font-size: 12px; line-height: 1.5; }
+
+.status-badge { padding: 6px 11px; font-size: 11px; }
+.table-card-head small { font-size: 11px; }
+.table-card-head h2 { font-size: 26px; }
+.table-card-body > span,
+.table-card-body > small { font-size: 13px; line-height: 1.45; }
+.table-card-body > b { font-size: 19px; }
+
+.sector-tabs button { padding: 10px 15px; font-size: 12px; }
+.kds-card-head small { font-size: 11px; }
+.kds-card-head h2 { font-size: 20px; }
+.kds-items b { font-size: 13px; }
+.kds-items span,
+.kds-items small { font-size: 11px; }
+.timer { font-size: 12px; }
+
+.receivable-info b { font-size: 14px; }
+.receivable-info span,
+.receivable-info small { font-size: 12px; }
+.receivable-total span { font-size: 11px; }
+.receivable-total strong { font-size: 20px; }
+.cash-status b { font-size: 14px; }
+.cash-status small { font-size: 12px; }
+
+.empty-state b { font-size: 18px; }
+.empty-state span { font-size: 13px; }
+.empty-state svg { width: 26px; height: 26px; }
+
+.compact-list b,
+.history-list b { font-size: 13px; }
+.compact-list small,
+.history-list small { font-size: 11px; }
+.ranking b { font-size: 13px; }
+.ranking small { font-size: 11px; }
+.ranking strong { font-size: 13px; }
+.bar-row span,
+.bar-row b { font-size: 12px; }
+
+.menu-admin-card span,
+.menu-admin-card small { font-size: 11px; }
+.menu-admin-card h3 { font-size: 16px; }
+.menu-admin-card > div > b { font-size: 16px; }
+
+label { font-size: 13px; }
+input,
+select,
+textarea { font-size: 14px; }
+.order-link-summary span { font-size: 12px; }
+.order-link-summary b { font-size: 13px; }
+.product-picker b { font-size: 12px; }
+.product-picker small { font-size: 11px; }
+
+.waiter-heading h1 { font-size: 25px; }
+.waiter-heading p { font-size: 13px; }
+.waiter-grid article > small { font-size: 12px; }
+.waiter-grid button { font-size: 12px; }
+
+.access-link b { font-size: 13px; }
+.access-link small { font-size: 11px; }
+
 @media (max-width: 700px) {
-  .page-heading p { font-size: 13px; }
-  th { font-size: 9px; }
+  .page-heading h1 { font-size: 24px; }
+  .page-heading p { font-size: 14px; }
+  th { font-size: 11px; }
 }
