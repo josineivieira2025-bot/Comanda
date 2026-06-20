@@ -16,6 +16,7 @@ import './styles/branding.css';
 import './styles/order-flow.css';
 import './styles/professional-layout.css';
 import './styles/contrast.css';
+import './styles/mobile-polish.css';
 
 createRoot(document.getElementById('root')).render(
   <React.StrictMode><HashRouter><AppProvider><App /></AppProvider></HashRouter></React.StrictMode>
