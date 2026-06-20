@@ -2,7 +2,7 @@ import { useNavigate } from 'react-router-dom';
 import { ArrowUpRight, Sparkles, Flame, Check, TrendingUp } from 'lucide-react';
 import PageHeader from '../components/PageHeader';
 import StatusBadge from '../components/StatusBadge';
-import { useApp, money } from '../services/AppContext';
+import { useApp, money, orderNumber } from '../services/AppContext';
 
 export default function Dashboard() {
   const { data, user, tableTotal, orderTotal, updateOrder } = useApp();
@@ -23,8 +23,8 @@ export default function Dashboard() {
     </div>
     <div className="dashboard-grid">
       <section className="panel"><div className="panel-head"><div><h2>Salão principal</h2><p>Consumo em tempo real</p></div><button className="text-button" onClick={() => navigate('/mesas')}>Gerenciar <ArrowUpRight /></button></div><div className="table-preview">{data.tables.slice(0, 9).map(table => <button key={table.id} className={`table-tile ${table.status}`} onClick={() => navigate('/mesas')}><span>MESA {table.number}</span><StatusBadge status={table.status} /><b>{money(tableTotal(table.id))}</b><small>{table.seats} lugares</small></button>)}</div></section>
-      <section className="panel"><div className="panel-head"><div><h2>Produção agora</h2><p>Pedidos ativos</p></div><button className="text-button" onClick={() => navigate('/kds')}>Abrir KDS <ArrowUpRight /></button></div><div className="compact-list">{active.slice(0, 5).map(order => <article key={order.id}><div><b>#{order.number} · Mesa {data.tables.find(table => table.id === order.tableId)?.number}</b><small>{order.items.length} item(ns) · {money(orderTotal(order))}</small></div><StatusBadge status={order.status} />{order.status === 'ready' && <button className="icon-success" onClick={() => updateOrder(order.id, 'delivered')}><Check /></button>}</article>)}</div></section>
-      <section className="ai-card"><div className="ai-title"><span><Sparkles /></span><div><small>ORBE INSIGHTS</small><h3>Próxima ação recomendada</h3></div></div><p>{critical ? <>O estoque de <b>{critical.name}</b> está em {critical.quantity} {critical.unit}. Reponha antes do próximo pico.</> : <>Cadastre os níveis mínimos do estoque para receber recomendações operacionais.</>}</p><div className="ai-action"><Flame /><span><b>{critical ? 'Antecipar reposição' : 'Ativar inteligência de estoque'}</b><small>Dados reais da sua operação</small></span></div></section>
+      <section className="panel"><div className="panel-head"><div><h2>Produção agora</h2><p>Pedidos ativos</p></div><button className="text-button" onClick={() => navigate('/kds')}>Abrir KDS <ArrowUpRight /></button></div><div className="compact-list">{active.slice(0, 5).map(order => <article key={order.id}><div><b>#{orderNumber(order.number)} · Mesa {data.tables.find(table => table.id === order.tableId)?.number}</b><small>{order.items.length} item(ns) · {money(orderTotal(order))}</small></div><StatusBadge status={order.status} />{order.status === 'ready' && <button className="icon-success" onClick={() => updateOrder(order.id, 'delivered')}><Check /></button>}</article>)}</div></section>
+      <section className="ai-card"><div className="ai-title"><span><Sparkles /></span><div><small>CHEFCONTROL INSIGHTS</small><h3>Próxima ação recomendada</h3></div></div><p>{critical ? <>O estoque de <b>{critical.name}</b> está em {critical.quantity} {critical.unit}. Reponha antes do próximo pico.</> : <>Cadastre os níveis mínimos do estoque para receber recomendações operacionais.</>}</p><div className="ai-action"><Flame /><span><b>{critical ? 'Antecipar reposição' : 'Ativar inteligência de estoque'}</b><small>Dados reais da sua operação</small></span></div></section>
     </div>
   </>;
 }

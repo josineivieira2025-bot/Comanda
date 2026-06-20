@@ -39,11 +39,12 @@ router.delete('/:id', roles('ADMIN', 'MANAGER'), asyncHandler(async (req, res) =
 router.post('/:id/open', asyncHandler(async (req, res) => {
   const table = await prisma.restaurantTable.findFirst({ where: { id: req.params.id, restaurantId: req.user.restaurantId } });
   if (!table) throw new HttpError(404, 'Mesa não encontrada');
-  const existing = await prisma.tab.findFirst({ where: { tableId: table.id, status: 'OPEN' }, include: { orders: { include: { items: true } } } });
+  const body = z.object({ customerId: z.string().optional().nullable(), forceNew: z.boolean().optional() }).parse(req.body);
+  const existing = body.forceNew ? null : await prisma.tab.findFirst({ where: { tableId: table.id, status: 'OPEN', ...(body.customerId ? { customerId: body.customerId } : {}) }, include: { customer: true, orders: { include: { items: true } } } });
   if (existing) return res.json(existing);
   const tab = await prisma.$transaction(async tx => {
     await tx.restaurantTable.update({ where: { id: table.id }, data: { status: 'OCCUPIED' } });
-    return tx.tab.create({ data: { restaurantId: req.user.restaurantId, tableId: table.id, customerId: req.body.customerId || null, waiterId: req.user.id }, include: { table: true, customer: true, orders: true } });
+    return tx.tab.create({ data: { restaurantId: req.user.restaurantId, tableId: table.id, customerId: body.customerId || null, waiterId: req.user.id }, include: { table: true, customer: true, orders: true } });
   });
   req.app.locals.io.to(req.user.restaurantId).emit('tab:opened', tab);
   res.status(201).json(tab);

@@ -43,8 +43,9 @@ router.post('/receivables/:tabId/pay', cashierRoles, asyncHandler(async (req, re
     const closed = await tx.tab.updateMany({ where: { id: tab.id, status: 'OPEN' }, data: { status: 'CLOSED', subtotal, serviceFee, total, closedAt: new Date() } });
     if (closed.count !== 1) throw new HttpError(409, 'Esta comanda já foi recebida');
     const payment = await tx.payment.create({ data: { restaurantId: req.user.restaurantId, tabId: tab.id, cashSessionId: session.id, userId: req.user.id, type: 'SALE', method: body.method, amount: total, description: `Comanda #${tab.number} · Mesa ${tab.table.number}` } });
-    await tx.restaurantTable.update({ where: { id: tab.tableId }, data: { status: 'AVAILABLE' } });
-    await tx.serviceCall.updateMany({ where: { tableId: tab.tableId, status: 'OPEN' }, data: { status: 'RESOLVED', resolvedAt: new Date() } });
+    const remainingTabs = await tx.tab.count({ where: { tableId: tab.tableId, status: 'OPEN' } });
+    await tx.restaurantTable.update({ where: { id: tab.tableId }, data: { status: remainingTabs ? 'OCCUPIED' : 'AVAILABLE' } });
+    if (!remainingTabs) await tx.serviceCall.updateMany({ where: { tableId: tab.tableId, status: 'OPEN' }, data: { status: 'RESOLVED', resolvedAt: new Date() } });
     return payment;
   });
   req.app.locals.io.to(req.user.restaurantId).emit('tab:closed', { id: tab.id, tableId: tab.tableId });
