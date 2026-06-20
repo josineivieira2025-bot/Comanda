@@ -5,6 +5,8 @@ import App from './App';
 import { AppProvider } from './services/AppContext';
 import './styles/styles.css';
 import './styles/auth.css';
+import './styles/responsive.css';
+import './styles/alerts.css';
 
 createRoot(document.getElementById('root')).render(
   <React.StrictMode><BrowserRouter><AppProvider><App /></AppProvider></BrowserRouter></React.StrictMode>

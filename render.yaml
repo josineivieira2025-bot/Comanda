@@ -20,7 +20,7 @@ services:
       - key: NODE_ENV
         value: production
       - key: FRONTEND_URL
-        value: https://orbe-web.onrender.com
+        value: https://comandarestaurantes.onrender.com
   - type: web
     name: orbe-web
     runtime: static
@@ -33,8 +33,8 @@ services:
         destination: /index.html
     envVars:
       - key: VITE_API_URL
-        value: https://orbe-api.onrender.com/api
+        value: https://comanda-lp2b.onrender.com/api
       - key: VITE_SOCKET_URL
-        value: https://orbe-api.onrender.com
+        value: https://comanda-lp2b.onrender.com
       - key: VITE_RESTAURANT_SLUG
         value: seu-restaurante
