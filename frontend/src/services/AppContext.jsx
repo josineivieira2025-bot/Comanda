@@ -10,7 +10,7 @@ const sectors = { KITCHEN: 'cozinha', BAR: 'bar', GRILL: 'churrasqueira', DESSER
 
 function normalize({ tables = [], orders = [], products = [], categories = [], stock = [], customers = [], finance = {}, settings = {} }) {
   return {
-    tables: tables.map(table => ({ id: table.id, number: table.number, seats: table.seats, status: lower(table.status), note: table.note, calls: table.calls || [], customerId: table.tabs?.[0]?.customerId, openedAt: table.tabs?.[0]?.openedAt })),
+    tables: tables.map(table => ({ id: table.id, number: table.number, seats: table.seats, status: lower(table.status), note: table.note, calls: table.calls || [], tabId: table.tabs?.[0]?.id || null, customerId: table.tabs?.[0]?.customerId, openedAt: table.tabs?.[0]?.openedAt })),
     customers: customers.map(customer => ({ ...customer, visits: customer.tabs?.length || 0 })),
     categories,
     products: products.map(product => ({ id: product.id, name: product.name, price: Number(product.price), category: product.category?.name || '', categoryId: product.categoryId, sector: sectors[product.category?.sector] || 'cozinha', available: product.available, image: product.imageUrl || '', description: product.description || '' })),
@@ -77,7 +77,13 @@ export function AppProvider({ children }) {
   async function resolveCall(id) { await api(`/service-calls/${id}/resolve`, { method: 'PATCH' }); await refresh(); notify('Chamado atendido.'); }
 
   const orderTotal = order => (order?.items || []).reduce((sum, item) => sum + (item.unitPrice ?? data.products.find(product => product.id === item.productId)?.price ?? 0) * item.qty, 0);
-  const tableTotal = id => data.orders.filter(order => order.tableId === id && order.status !== 'cancelled').reduce((sum, order) => sum + orderTotal(order), 0);
+  const tableTotal = id => {
+    const activeTabId = data.tables.find(table => table.id === id)?.tabId;
+    if (!activeTabId) return 0;
+    return data.orders
+      .filter(order => order.tabId === activeTabId && order.status !== 'cancelled')
+      .reduce((sum, order) => sum + orderTotal(order), 0);
+  };
   const value = useMemo(() => ({ data, setData, user, ready, login, register, logout, refresh, reset: refresh, toast, notify, mutate, remove, createOrder, updateOrder, moveStock, openTable, cashAction, payReceivable, saveSettings, resolveCall, orderTotal, tableTotal }), [data, user, ready, toast, notify, refresh]);
   return <Context.Provider value={value}>{children}<div className="global-request-indicator">Processando sua ação</div>{toast && <div className="toast">✓ {toast}</div>}</Context.Provider>;
 }

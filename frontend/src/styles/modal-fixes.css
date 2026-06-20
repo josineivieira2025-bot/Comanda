@@ -1,0 +1,63 @@
+.modal-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 20px;
+  margin-bottom: 20px;
+}
+
+.modal-heading > div {
+  min-width: 0;
+}
+
+.modal-heading small {
+  display: block;
+  color: #87928d;
+  font-size: 8px;
+  letter-spacing: 1px;
+  margin-bottom: 6px;
+}
+
+.modal-heading h2 {
+  color: #17201d;
+  font: 600 21px Manrope, sans-serif;
+  margin: 0;
+}
+
+.modal-close {
+  width: 38px;
+  height: 38px;
+  flex: 0 0 38px;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border: 1px solid #dfe6e2;
+  border-radius: 10px;
+  background: #f3f6f4;
+  color: #52605a;
+  transition: background .18s ease, border-color .18s ease, color .18s ease, transform .18s ease;
+}
+
+.modal-close:hover {
+  border-color: #cbd8d2;
+  background: #e8efeb;
+  color: #17201d;
+  transform: translateY(-1px);
+}
+
+.modal-close:focus-visible {
+  outline: 3px solid #cfe9de;
+  outline-offset: 2px;
+}
+
+.modal-close svg {
+  width: 18px;
+  height: 18px;
+  stroke-width: 2;
+}
+
+@media (max-width: 600px) {
+  .modal-heading {
+    gap: 12px;
+  }
+}
