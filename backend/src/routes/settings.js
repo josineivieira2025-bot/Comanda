@@ -2,7 +2,7 @@ import { Router } from 'express';
 import { z } from 'zod';
 import { prisma } from '../lib/prisma.js';
 import { asyncHandler, HttpError } from '../lib/http.js';
-import { auth, roles } from '../middleware/auth.js';
+import { auth, permit } from '../middleware/auth.js';
 
 const router = Router();
 router.use(auth);
@@ -16,7 +16,7 @@ router.get('/', asyncHandler(async (req, res) => {
   res.json(restaurant);
 }));
 
-router.put('/', roles('ADMIN', 'MANAGER'), asyncHandler(async (req, res) => {
+router.put('/', permit('settings.edit'), asyncHandler(async (req, res) => {
   const body = z.object({
     name: z.string().trim().min(2),
     city: z.string().trim().max(120).optional().nullable(),

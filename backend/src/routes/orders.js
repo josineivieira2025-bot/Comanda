@@ -2,7 +2,7 @@ import { Router } from 'express';
 import { z } from 'zod';
 import { prisma } from '../lib/prisma.js';
 import { asyncHandler, HttpError } from '../lib/http.js';
-import { auth } from '../middleware/auth.js';
+import { auth, permit } from '../middleware/auth.js';
 
 const router = Router();
 router.use(auth);
@@ -13,14 +13,14 @@ const include = {
   items: { include: { product: { include: { category: true } } } }
 };
 
-router.get('/', asyncHandler(async (req, res) => {
+router.get('/', permit('orders.view', 'kds.view', 'dashboard.view', 'tables.view', 'customers.view', 'reports.view'), asyncHandler(async (req, res) => {
   const where = { tab: { restaurantId: req.user.restaurantId } };
   if (req.query.status) where.status = req.query.status;
   if (req.query.sector) where.items = { some: { product: { category: { sector: req.query.sector } } } };
   res.json(await prisma.order.findMany({ where, include, orderBy: { createdAt: 'desc' } }));
 }));
 
-router.post('/', asyncHandler(async (req, res) => {
+router.post('/', permit('orders.edit'), asyncHandler(async (req, res) => {
   const body = z.object({
     tabId: z.string(),
     tableId: z.string(),
@@ -57,7 +57,7 @@ router.post('/', asyncHandler(async (req, res) => {
   res.status(201).json(order);
 }));
 
-router.patch('/:id/status', asyncHandler(async (req, res) => {
+router.patch('/:id/status', permit('orders.edit', 'kds.edit'), asyncHandler(async (req, res) => {
   const allowed = ['OPEN', 'PREPARING', 'READY', 'DELIVERED', 'CANCELLED'];
   if (!allowed.includes(req.body.status)) throw new HttpError(400, 'Status inválido');
   const current = await prisma.order.findFirst({ where: { id: req.params.id, tab: { restaurantId: req.user.restaurantId } } });

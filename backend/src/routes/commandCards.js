@@ -2,7 +2,7 @@ import { Router } from 'express';
 import { z } from 'zod';
 import { prisma } from '../lib/prisma.js';
 import { asyncHandler, HttpError } from '../lib/http.js';
-import { auth, roles } from '../middleware/auth.js';
+import { auth, permit } from '../middleware/auth.js';
 
 const router = Router();
 router.use(auth);
@@ -19,11 +19,11 @@ const include = {
   }
 };
 
-router.get('/', asyncHandler(async (req, res) => {
+router.get('/', permit('tables.view', 'orders.edit'), asyncHandler(async (req, res) => {
   res.json(await prisma.commandCard.findMany({ where: { restaurantId: req.user.restaurantId }, include, orderBy: { number: 'asc' } }));
 }));
 
-router.post('/', roles('ADMIN', 'MANAGER'), asyncHandler(async (req, res) => {
+router.post('/', permit('tables.edit'), asyncHandler(async (req, res) => {
   const body = z.object({ start: z.coerce.number().int().min(1).max(9999), end: z.coerce.number().int().min(1).max(9999) }).parse(req.body);
   if (body.end < body.start) throw new HttpError(400, 'O número final deve ser maior que o inicial');
   if (body.end - body.start > 999) throw new HttpError(400, 'Cadastre no máximo 1.000 comandas por vez');
@@ -34,7 +34,7 @@ router.post('/', roles('ADMIN', 'MANAGER'), asyncHandler(async (req, res) => {
   res.status(201).json(cards);
 }));
 
-router.patch('/:id', roles('ADMIN', 'MANAGER'), asyncHandler(async (req, res) => {
+router.patch('/:id', permit('tables.edit'), asyncHandler(async (req, res) => {
   const card = await prisma.commandCard.findFirst({ where: { id: req.params.id, restaurantId: req.user.restaurantId }, include });
   if (!card) throw new HttpError(404, 'Comanda não encontrada');
   const active = z.object({ active: z.boolean() }).parse(req.body).active;

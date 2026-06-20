@@ -13,7 +13,7 @@ const blankRange = { start: 1, end: 300 };
 const cardNumber = number => String(number).padStart(3, '0');
 
 export default function Tables() {
-  const { data, mutate, remove, tableTotal, createCommandCards, toggleCommandCard, resolveCall, orderTotal } = useApp();
+  const { data, mutate, remove, tableTotal, createCommandCards, toggleCommandCard, resolveCall, orderTotal, can } = useApp();
   const navigate = useNavigate();
   const [view, setView] = useState('tables');
   const [editing, setEditing] = useState(null);
@@ -43,7 +43,7 @@ export default function Tables() {
 
   return <>
     <PageHeader title="Salão & comandas">
-      {view === 'tables' ? <button className="primary" onClick={() => openTableEditor()}><Plus /> Cadastrar mesa</button> : <button className="primary" onClick={() => setRangeModal(true)}><Plus /> Cadastrar comandas</button>}
+      {can('tables.edit') && (view === 'tables' ? <button className="primary" onClick={() => openTableEditor()}><Plus /> Cadastrar mesa</button> : <button className="primary" onClick={() => setRangeModal(true)}><Plus /> Cadastrar comandas</button>)}
     </PageHeader>
 
     <div className="resource-tabs" role="tablist" aria-label="Gestão do salão">
@@ -56,8 +56,8 @@ export default function Tables() {
       <div className="tables-grid">{data.tables.map(table => <article className={`table-card ${table.status}`} key={table.id}>
         <div className="table-card-head"><div><small>MESA DE ENTREGA</small><h2>{table.number}</h2></div><StatusBadge status={table.status} /></div>
         <div className="table-card-body"><span>{table.seats} lugares</span><b>{money(tableTotal(table.id))}</b><small>{table.calls?.[0] ? (table.calls[0].type === 'BILL' ? 'Cliente solicitou a conta' : 'Cliente chamou o garçom') : table.note || 'Selecione esta mesa ao lançar um pedido'}</small></div>
-        {table.calls?.length > 0 && <button className="call-alert" onClick={() => resolveCall(table.calls[0].id)}>Atender chamado</button>}
-        <div className="card-actions"><button onClick={() => setOrderTarget({ tableId: table.id })}><UtensilsCrossed /> Lançar pedido</button><button aria-label="Editar mesa" onClick={() => openTableEditor(table)}><Pencil /></button><button aria-label="Excluir mesa" onClick={() => confirm('Excluir esta mesa?') && remove('tables', table.id)}><Trash2 /></button><a aria-label="Abrir portal da mesa" href={`/#/mesa/${table.id}`} target="_blank" rel="noreferrer"><ExternalLink /></a></div>
+        {can('tables.edit') && table.calls?.length > 0 && <button className="call-alert" onClick={() => resolveCall(table.calls[0].id)}>Atender chamado</button>}
+        <div className="card-actions">{can('orders.edit') && <button onClick={() => setOrderTarget({ tableId: table.id })}><UtensilsCrossed /> Lançar pedido</button>}{can('tables.edit') && <><button aria-label="Editar mesa" onClick={() => openTableEditor(table)}><Pencil /></button><button aria-label="Excluir mesa" onClick={() => confirm('Excluir esta mesa?') && remove('tables', table.id)}><Trash2 /></button></>}<a aria-label="Abrir portal da mesa" href={`/#/mesa/${table.id}`} target="_blank" rel="noreferrer"><ExternalLink /></a></div>
       </article>)}</div>
     </> : <>
       <div className="summary-strip"><span><b>{activeCards.length}</b> cadastradas</span><span><b>{activeCards.length - cardsInUse.length}</b> livres</span><span><b>{cardsInUse.length}</b> em uso</span><span><b>{money(cardsInUse.reduce((sum, card) => sum + tabTotal(card.openTab.id), 0))}</b> consumo aberto</span></div>
@@ -71,7 +71,7 @@ export default function Tables() {
           <td>{tab?.table ? `Mesa ${tab.table.number}` : '—'}</td>
           <td>{orders.length}</td>
           <td><b>{money(tab ? tabTotal(tab.id) : 0)}</b></td>
-          <td><div className="row-actions">{card.active && <button className="action-green" onClick={() => setOrderTarget({ commandCardId: card.id, tabId: tab?.id, tableId: tab?.table?.id, number: card.number })}><UtensilsCrossed /> Lançar pedido</button>}{tab && <button onClick={() => navigate('/financeiro')}><ReceiptText /> Receber</button>}<button title={card.active ? 'Desativar ficha' : 'Ativar ficha'} onClick={() => toggleCommandCard(card.id, !card.active)}><Power /> {card.active ? 'Desativar' : 'Ativar'}</button></div></td>
+          <td><div className="row-actions">{can('orders.edit') && card.active && <button className="action-green" onClick={() => setOrderTarget({ commandCardId: card.id, tabId: tab?.id, tableId: tab?.table?.id, number: card.number })}><UtensilsCrossed /> Lançar pedido</button>}{can('finance.view') && tab && <button onClick={() => navigate('/financeiro')}><ReceiptText /> Receber</button>}{can('tables.edit') && <button title={card.active ? 'Desativar ficha' : 'Ativar ficha'} onClick={() => toggleCommandCard(card.id, !card.active)}><Power /> {card.active ? 'Desativar' : 'Ativar'}</button>}</div></td>
         </tr>;
       })}</tbody></table></div>{!data.commandCards.length && <EmptyState icon={ClipboardList} title="Nenhuma ficha cadastrada" description="Cadastre uma faixa, por exemplo de 001 até 300. Cada pessoa recebe uma ficha na entrada." />}</section>
     </>}

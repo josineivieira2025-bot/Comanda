@@ -1,15 +1,16 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { api, getToken, setToken } from './api';
 import { connectSocket } from './socket';
+import { can, canAny } from './permissions';
 
 const Context = createContext(null);
 export const money = value => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(Number(value) || 0);
 export const orderNumber = value => String(Number(value) || 0).padStart(7, '0');
-const empty = { tables: [], commandCards: [], customers: [], products: [], categories: [], orders: [], inventory: [], transactions: [], receivables: [], settings: { restaurant: 'Seu Restaurante', city: '', serviceFee: 10, slug: '' } };
+const empty = { tables: [], commandCards: [], customers: [], products: [], categories: [], orders: [], inventory: [], employees: [], transactions: [], receivables: [], settings: { restaurant: 'Seu Restaurante', city: '', serviceFee: 10, slug: '' } };
 const lower = value => String(value || '').toLowerCase();
 const sectors = { KITCHEN: 'cozinha', BAR: 'bar', GRILL: 'churrasqueira', DESSERT: 'sobremesa' };
 
-function normalize({ tables = [], commandCards = [], orders = [], products = [], categories = [], stock = [], customers = [], finance = {}, settings = {} }) {
+function normalize({ tables = [], commandCards = [], orders = [], products = [], categories = [], stock = [], customers = [], users = [], finance = {}, settings = {} }) {
   const dailyCounters = new Map();
   const dailyNumbers = new Map();
   [...orders].sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt)).forEach(order => {
@@ -25,8 +26,9 @@ function normalize({ tables = [], commandCards = [], orders = [], products = [],
     customers: customers.map(customer => ({ ...customer, visits: customer.tabs?.length || 0 })),
     categories,
     products: products.map(product => ({ id: product.id, name: product.name, price: Number(product.price), category: product.category?.name || '', categoryId: product.categoryId, sector: sectors[product.category?.sector] || 'cozinha', available: product.available, image: product.imageUrl || '', description: product.description || '' })),
-    orders: orders.map(order => ({ id: order.id, number: dailyNumbers.get(order.id) || order.number, tableId: order.deliveryTableId || order.deliveryTable?.id || order.tab?.tableId, tabId: order.tabId, customerId: order.tab?.customerId, commandCardNumber: order.tab?.commandCard?.number || order.tab?.number || null, status: lower(order.status), createdAt: order.createdAt, startedAt: order.startedAt, items: order.items.map(item => ({ id: item.id, productId: item.productId, qty: item.quantity, note: item.note || '', unitPrice: Number(item.unitPrice) })) })),
+    orders: orders.map(order => ({ id: order.id, number: dailyNumbers.get(order.id) || order.number, tableId: order.deliveryTableId || order.deliveryTable?.id || order.tab?.tableId, tableNumber: order.deliveryTable?.number || order.tab?.table?.number, tabId: order.tabId, customerId: order.tab?.customerId, commandCardNumber: order.tab?.commandCard?.number || order.tab?.number || null, status: lower(order.status), createdAt: order.createdAt, startedAt: order.startedAt, items: order.items.map(item => ({ id: item.id, productId: item.productId, product: item.product ? { ...item.product, sector: sectors[item.product.category?.sector] || 'cozinha' } : null, qty: item.quantity, note: item.note || '', unitPrice: Number(item.unitPrice) })) })),
     inventory: stock.map(item => ({ id: item.id, name: item.name, category: item.category, unit: item.unit, quantity: Number(item.quantity), min: Number(item.minimumStock) })),
+    employees: users,
     transactions: (finance.payments || []).map(payment => ({ id: payment.id, type: lower(payment.type) === 'withdrawal' ? 'withdrawal' : lower(payment.type) === 'supply' ? 'supply' : 'sale', description: payment.description || payment.type, amount: (payment.type === 'WITHDRAWAL' ? -1 : 1) * Number(payment.amount), payment: lower(payment.method), createdAt: payment.createdAt })),
     receivables: (finance.receivables || []).map(tab => ({ ...tab, subtotal: Number(tab.subtotal), serviceFee: Number(tab.serviceFee), total: Number(tab.total) })),
     settings: { restaurant: settings.name || 'Seu Restaurante', city: settings.city || '', serviceFee: Number(settings.serviceFee ?? 10), slug: settings.slug || '' },
@@ -40,27 +42,39 @@ export function AppProvider({ children }) {
   const [ready, setReady] = useState(false);
   const [toast, setToast] = useState('');
   const refreshPromise = useRef(null);
+  const currentUserRef = useRef(null);
   const notify = useCallback(message => { setToast(message); window.setTimeout(() => setToast(''), 2800); }, []);
   useEffect(() => { const onError = event => notify(event.detail); window.addEventListener('orbe:api-error', onError); return () => window.removeEventListener('orbe:api-error', onError); }, [notify]);
 
-  const refresh = useCallback(() => {
+  const refresh = useCallback((userOverride) => {
     if (!getToken()) return Promise.resolve();
     if (refreshPromise.current) return refreshPromise.current;
+    const currentUser = userOverride || currentUserRef.current;
+    const load = (allowed, path, fallback) => allowed ? api(path) : Promise.resolve(fallback);
     refreshPromise.current = (async () => {
-      const [tables, commandCards, orders, products, categories, stock, customers, finance, settings] = await Promise.all([
-        api('/tables'), api('/command-cards'), api('/orders'), api('/catalog/products'), api('/catalog/categories'), api('/stock'), api('/customers'), api('/finance/summary'), api('/settings')
+      const [tables, commandCards, orders, products, categories, stock, customers, users, finance, settings] = await Promise.all([
+        load(canAny(currentUser, 'tables.view', 'dashboard.view', 'orders.view', 'orders.edit'), '/tables', []),
+        load(canAny(currentUser, 'tables.view', 'orders.edit'), '/command-cards', []),
+        load(canAny(currentUser, 'orders.view', 'kds.view', 'dashboard.view', 'tables.view', 'customers.view', 'reports.view'), '/orders', []),
+        load(canAny(currentUser, 'menu.view', 'orders.view', 'orders.edit', 'dashboard.view', 'reports.view'), '/catalog/products', []),
+        load(canAny(currentUser, 'menu.view', 'orders.view', 'orders.edit', 'dashboard.view', 'reports.view'), '/catalog/categories', []),
+        load(canAny(currentUser, 'stock.view', 'dashboard.view'), '/stock', []),
+        load(canAny(currentUser, 'customers.view', 'orders.edit', 'reports.view'), '/customers', []),
+        load(currentUser?.role === 'ADMIN', '/users', []),
+        load(canAny(currentUser, 'finance.view', 'dashboard.view'), '/finance/summary', {}),
+        api('/settings')
       ]);
-      setData(normalize({ tables, commandCards, orders, products, categories, stock, customers, finance, settings }));
+      setData(normalize({ tables, commandCards, orders, products, categories, stock, customers, users, finance, settings }));
     })().finally(() => { refreshPromise.current = null; });
     return refreshPromise.current;
   }, []);
 
-  useEffect(() => { (async () => { if (getToken()) try { setUser(await api('/auth/me')); await refresh(); } catch { setToken(null); } setReady(true); })(); }, [refresh]);
+  useEffect(() => { (async () => { if (getToken()) try { const me = await api('/auth/me'); currentUserRef.current = me; setUser(me); await refresh(me); } catch { setToken(null); } setReady(true); })(); }, [refresh]);
   useEffect(() => user ? connectSocket(() => refresh()) : undefined, [user, refresh]);
 
-  async function login(email, password) { const result = await api('/auth/login', { method: 'POST', body: { email, password } }); setToken(result.token); setUser(result.user); await refresh(); }
-  async function register(values) { const result = await api('/auth/register', { method: 'POST', body: values }); setToken(result.token); setUser(result.user); await refresh(); }
-  function logout() { setToken(null); setUser(null); setData(empty); }
+  async function login(email, password) { const result = await api('/auth/login', { method: 'POST', body: { email, password } }); setToken(result.token); currentUserRef.current = result.user; setUser(result.user); await refresh(result.user); }
+  async function register(values) { const result = await api('/auth/register', { method: 'POST', body: values }); setToken(result.token); currentUserRef.current = result.user; setUser(result.user); await refresh(result.user); }
+  function logout() { setToken(null); currentUserRef.current = null; setUser(null); setData(empty); }
 
   async function mutate(collection, id, values) {
     let path;
@@ -89,6 +103,7 @@ export function AppProvider({ children }) {
   async function payReceivable(tabId, method) { const result = await api(`/finance/receivables/${tabId}/pay`, { method: 'POST', body: { method } }); await refresh(); notify('Pagamento confirmado e mesa liberada.'); return result; }
   async function saveSettings(values) { const settings = await api('/settings', { method: 'PUT', body: { name: values.restaurant, city: values.city, serviceFee: Number(values.serviceFee) } }); setData(current => ({ ...current, settings: { restaurant: settings.name, city: settings.city || '', serviceFee: Number(settings.serviceFee), slug: settings.slug } })); notify('Configurações salvas no banco.'); }
   async function resolveCall(id) { await api(`/service-calls/${id}/resolve`, { method: 'PATCH' }); await refresh(); notify('Chamado atendido.'); }
+  async function saveEmployee(id, values) { await api(id ? `/users/${id}` : '/users', { method: id ? 'PATCH' : 'POST', body: values }); await refresh(); notify(id ? 'Colaborador atualizado.' : 'Colaborador criado.'); }
 
   const orderTotal = order => (order?.items || []).reduce((sum, item) => sum + (item.unitPrice ?? data.products.find(product => product.id === item.productId)?.price ?? 0) * item.qty, 0);
   const tableTotal = id => {
@@ -98,7 +113,7 @@ export function AppProvider({ children }) {
       .filter(order => activeTabIds.includes(order.tabId) && order.status !== 'cancelled')
       .reduce((sum, order) => sum + orderTotal(order), 0);
   };
-  const value = useMemo(() => ({ data, setData, user, ready, login, register, logout, refresh, reset: refresh, toast, notify, mutate, remove, createOrder, updateOrder, moveStock, openTable, createTab, createCommandCards, toggleCommandCard, cashAction, payReceivable, saveSettings, resolveCall, orderTotal, tableTotal }), [data, user, ready, toast, notify, refresh]);
+  const value = useMemo(() => ({ data, setData, user, ready, login, register, logout, refresh, reset: refresh, toast, notify, mutate, remove, createOrder, updateOrder, moveStock, openTable, createTab, createCommandCards, toggleCommandCard, cashAction, payReceivable, saveSettings, resolveCall, saveEmployee, can: permission => can(user, permission), orderTotal, tableTotal }), [data, user, ready, toast, notify, refresh]);
   return <Context.Provider value={value}>{children}<div className="global-request-indicator">Processando sua ação</div>{toast && <div className="toast">✓ {toast}</div>}</Context.Provider>;
 }
 

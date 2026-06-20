@@ -2,14 +2,16 @@ import { Router } from 'express';
 import { z } from 'zod';
 import { prisma } from '../lib/prisma.js';
 import { asyncHandler, HttpError } from '../lib/http.js';
-import { auth, roles } from '../middleware/auth.js';
+import { auth, permit } from '../middleware/auth.js';
 
 const router = Router();
 router.use(auth);
-const cashierRoles = roles('ADMIN', 'MANAGER', 'CASHIER');
+const financeView = permit('finance.view', 'dashboard.view');
+const financeEdit = permit('finance.edit');
+const cashierRoles = financeEdit;
 const methods = ['CASH', 'PIX', 'CARD', 'VOUCHER'];
 
-router.get('/summary', asyncHandler(async (req, res) => {
+router.get('/summary', financeView, asyncHandler(async (req, res) => {
   const start = new Date();
   start.setHours(0, 0, 0, 0);
   const [session, payments, restaurant, openTabs] = await Promise.all([
@@ -28,7 +30,7 @@ router.get('/summary', asyncHandler(async (req, res) => {
   res.json({ session, payments, receivables, total, byMethod: Object.fromEntries(methods.map(method => [method, payments.filter(payment => payment.method === method && payment.type === 'SALE').reduce((sum, payment) => sum + Number(payment.amount), 0)])) });
 }));
 
-router.post('/receivables/:tabId/pay', cashierRoles, asyncHandler(async (req, res) => {
+router.post('/receivables/:tabId/pay', financeEdit, asyncHandler(async (req, res) => {
   const body = z.object({ method: z.enum(['CASH', 'PIX', 'CARD', 'VOUCHER']) }).parse(req.body);
   const tab = await prisma.tab.findFirst({ where: { id: req.params.tabId, restaurantId: req.user.restaurantId, status: 'OPEN' }, include: { orders: { where: { status: { not: 'CANCELLED' } }, include: { items: true } }, table: true } });
   if (!tab) throw new HttpError(404, 'Comanda pendente não encontrada');

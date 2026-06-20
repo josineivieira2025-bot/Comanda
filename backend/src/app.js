@@ -13,6 +13,7 @@ import settingsRoutes from './routes/settings.js';
 import serviceCallRoutes from './routes/serviceCalls.js';
 import publicRoutes from './routes/public.js';
 import commandCardRoutes from './routes/commandCards.js';
+import { auth, moduleAccess } from './middleware/auth.js';
 
 export function createApp() {
   const app = express();
@@ -23,9 +24,9 @@ export function createApp() {
   app.use('/api/users', userRoutes);
   app.use('/api/tables', tableRoutes);
   app.use('/api/orders', orderRoutes);
-  app.use('/api/catalog', catalogRoutes);
-  app.use('/api/stock', stockRoutes);
-  app.use('/api/customers', customerRoutes);
+  app.use('/api/catalog', auth, moduleAccess(['menu.view', 'orders.view', 'orders.edit', 'dashboard.view', 'reports.view'], 'menu.edit'), catalogRoutes);
+  app.use('/api/stock', auth, moduleAccess(['stock.view', 'dashboard.view'], 'stock.edit'), stockRoutes);
+  app.use('/api/customers', auth, moduleAccess(['customers.view', 'orders.edit', 'reports.view'], 'customers.edit'), customerRoutes);
   app.use('/api/finance', financeRoutes);
   app.use('/api/settings', settingsRoutes);
   app.use('/api/service-calls', serviceCallRoutes);
