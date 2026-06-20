@@ -12,7 +12,7 @@ router.post('/table/:id/order', asyncHandler(async (req, res) => {
   let tab = await prisma.tab.findFirst({ where: { tableId: table.id, status: 'OPEN' } });
   if (!tab) tab = await prisma.$transaction(async tx => { await tx.restaurantTable.update({ where: { id: table.id }, data: { status: 'OCCUPIED' } }); return tx.tab.create({ data: { restaurantId: table.restaurantId, tableId: table.id } }); });
   const ids = body.items.map(item => item.productId); const products = await prisma.product.findMany({ where: { id: { in: ids }, restaurantId: table.restaurantId, available: true } }); if (products.length !== new Set(ids).size) throw new HttpError(400, 'Produto inválido ou indisponível');
-  const order = await prisma.order.create({ data: { tabId: tab.id, note: body.note, items: { create: body.items.map(item => ({ productId: item.productId, quantity: item.quantity, note: item.note, unitPrice: products.find(product => product.id === item.productId).price })) } }, include: { tab: { include: { table: true } }, items: { include: { product: { include: { category: true } } } } } });
+  const order = await prisma.order.create({ data: { tabId: tab.id, deliveryTableId: table.id, note: body.note, items: { create: body.items.map(item => ({ productId: item.productId, quantity: item.quantity, note: item.note, unitPrice: products.find(product => product.id === item.productId).price })) } }, include: { tab: { include: { table: true } }, deliveryTable: true, items: { include: { product: { include: { category: true } } } } } });
   req.app.locals.io.to(table.restaurantId).emit('order:created', order); res.status(201).json(order);
 }));
 router.post('/table/:id/call', asyncHandler(async (req, res) => {

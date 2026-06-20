@@ -1,5 +1,71 @@
-import { Router } from 'express';import { z } from 'zod';import { prisma } from '../lib/prisma.js';import { asyncHandler,HttpError } from '../lib/http.js';import { auth } from '../middleware/auth.js';
-const router=Router();router.use(auth);const include={tab:{include:{table:true,customer:true}},waiter:{select:{id:true,name:true}},items:{include:{product:{include:{category:true}}}}};
-router.get('/',asyncHandler(async(req,res)=>{const where={tab:{restaurantId:req.user.restaurantId}};if(req.query.status)where.status=req.query.status;if(req.query.sector)where.items={some:{product:{category:{sector:req.query.sector}}}};res.json(await prisma.order.findMany({where,include,orderBy:{createdAt:'desc'}}))}));
-router.post('/',asyncHandler(async(req,res)=>{const body=z.object({tabId:z.string(),note:z.string().optional(),items:z.array(z.object({productId:z.string(),quantity:z.number().int().positive(),note:z.string().optional()})).min(1)}).parse(req.body);const tab=await prisma.tab.findFirst({where:{id:body.tabId,restaurantId:req.user.restaurantId,status:'OPEN'}});if(!tab)throw new HttpError(404,'Comanda aberta não encontrada');const ids=body.items.map(i=>i.productId);const products=await prisma.product.findMany({where:{id:{in:ids},restaurantId:req.user.restaurantId,available:true}});if(products.length!==new Set(ids).size)throw new HttpError(400,'Produto inválido ou indisponível');const order=await prisma.order.create({data:{tabId:tab.id,waiterId:req.user.id,note:body.note,items:{create:body.items.map(item=>({productId:item.productId,quantity:item.quantity,note:item.note,unitPrice:products.find(p=>p.id===item.productId).price}))}},include});req.app.locals.io.to(req.user.restaurantId).emit('order:created',order);res.status(201).json(order)}));
-router.patch('/:id/status',asyncHandler(async(req,res)=>{const allowed=['OPEN','PREPARING','READY','DELIVERED','CANCELLED'];if(!allowed.includes(req.body.status))throw new HttpError(400,'Status inválido');const current=await prisma.order.findFirst({where:{id:req.params.id,tab:{restaurantId:req.user.restaurantId}}});if(!current)throw new HttpError(404,'Pedido não encontrado');const dates=req.body.status==='PREPARING'?{startedAt:new Date()}:req.body.status==='READY'?{readyAt:new Date()}:req.body.status==='DELIVERED'?{deliveredAt:new Date()}:{};const order=await prisma.order.update({where:{id:current.id},data:{status:req.body.status,...dates},include});req.app.locals.io.to(req.user.restaurantId).emit('order:updated',order);res.json(order)}));export default router;
+import { Router } from 'express';
+import { z } from 'zod';
+import { prisma } from '../lib/prisma.js';
+import { asyncHandler, HttpError } from '../lib/http.js';
+import { auth } from '../middleware/auth.js';
+
+const router = Router();
+router.use(auth);
+const include = {
+  tab: { include: { commandCard: true, table: true, customer: true } },
+  deliveryTable: true,
+  waiter: { select: { id: true, name: true } },
+  items: { include: { product: { include: { category: true } } } }
+};
+
+router.get('/', asyncHandler(async (req, res) => {
+  const where = { tab: { restaurantId: req.user.restaurantId } };
+  if (req.query.status) where.status = req.query.status;
+  if (req.query.sector) where.items = { some: { product: { category: { sector: req.query.sector } } } };
+  res.json(await prisma.order.findMany({ where, include, orderBy: { createdAt: 'desc' } }));
+}));
+
+router.post('/', asyncHandler(async (req, res) => {
+  const body = z.object({
+    tabId: z.string(),
+    tableId: z.string(),
+    note: z.string().optional(),
+    items: z.array(z.object({ productId: z.string(), quantity: z.number().int().positive(), note: z.string().optional() })).min(1)
+  }).parse(req.body);
+  const tab = await prisma.tab.findFirst({ where: { id: body.tabId, restaurantId: req.user.restaurantId, status: 'OPEN' } });
+  if (!tab) throw new HttpError(404, 'Comanda aberta não encontrada');
+  const table = await prisma.restaurantTable.findFirst({ where: { id: body.tableId, restaurantId: req.user.restaurantId } });
+  if (!table) throw new HttpError(404, 'Mesa de entrega não encontrada');
+  const ids = body.items.map(item => item.productId);
+  const products = await prisma.product.findMany({ where: { id: { in: ids }, restaurantId: req.user.restaurantId, available: true } });
+  if (products.length !== new Set(ids).size) throw new HttpError(400, 'Produto inválido ou indisponível');
+
+  const order = await prisma.$transaction(async tx => {
+    if (tab.tableId !== table.id) {
+      const remainingAtOldTable = await tx.tab.count({ where: { tableId: tab.tableId, status: 'OPEN', id: { not: tab.id } } });
+      if (!remainingAtOldTable) await tx.restaurantTable.update({ where: { id: tab.tableId }, data: { status: 'AVAILABLE' } });
+      await tx.tab.update({ where: { id: tab.id }, data: { tableId: table.id } });
+    }
+    await tx.restaurantTable.update({ where: { id: table.id }, data: { status: 'OCCUPIED' } });
+    return tx.order.create({
+      data: {
+        tabId: tab.id,
+        deliveryTableId: table.id,
+        waiterId: req.user.id,
+        note: body.note,
+        items: { create: body.items.map(item => ({ productId: item.productId, quantity: item.quantity, note: item.note, unitPrice: products.find(product => product.id === item.productId).price })) }
+      },
+      include
+    });
+  });
+  req.app.locals.io.to(req.user.restaurantId).emit('order:created', order);
+  res.status(201).json(order);
+}));
+
+router.patch('/:id/status', asyncHandler(async (req, res) => {
+  const allowed = ['OPEN', 'PREPARING', 'READY', 'DELIVERED', 'CANCELLED'];
+  if (!allowed.includes(req.body.status)) throw new HttpError(400, 'Status inválido');
+  const current = await prisma.order.findFirst({ where: { id: req.params.id, tab: { restaurantId: req.user.restaurantId } } });
+  if (!current) throw new HttpError(404, 'Pedido não encontrado');
+  const dates = req.body.status === 'PREPARING' ? { startedAt: new Date() } : req.body.status === 'READY' ? { readyAt: new Date() } : req.body.status === 'DELIVERED' ? { deliveredAt: new Date() } : {};
+  const order = await prisma.order.update({ where: { id: current.id }, data: { status: req.body.status, ...dates }, include });
+  req.app.locals.io.to(req.user.restaurantId).emit('order:updated', order);
+  res.json(order);
+}));
+
+export default router;

@@ -12,6 +12,7 @@ import financeRoutes from './routes/finance.js';
 import settingsRoutes from './routes/settings.js';
 import serviceCallRoutes from './routes/serviceCalls.js';
 import publicRoutes from './routes/public.js';
+import commandCardRoutes from './routes/commandCards.js';
 
 export function createApp() {
   const app = express();
@@ -29,6 +30,7 @@ export function createApp() {
   app.use('/api/settings', settingsRoutes);
   app.use('/api/service-calls', serviceCallRoutes);
   app.use('/api/public', publicRoutes);
+  app.use('/api/command-cards', commandCardRoutes);
   app.use((err, _req, res, _next) => {
     console.error(err);
     if (err?.name === 'ZodError') return res.status(400).json({ message: 'Dados inválidos', issues: err.issues });

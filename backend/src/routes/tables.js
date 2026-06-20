@@ -6,7 +6,7 @@ import { auth, roles } from '../middleware/auth.js';
 
 const router = Router();
 router.use(auth);
-const include = { calls: { where: { status: 'OPEN' }, orderBy: { createdAt: 'asc' } }, tabs: { where: { status: 'OPEN' }, include: { customer: true, waiter: { select: { id: true, name: true } }, orders: { where: { status: { not: 'CANCELLED' } }, include: { items: true } } } } };
+const include = { calls: { where: { status: 'OPEN' }, orderBy: { createdAt: 'asc' } }, tabs: { where: { status: 'OPEN' }, include: { commandCard: true, customer: true, waiter: { select: { id: true, name: true } }, orders: { where: { status: { not: 'CANCELLED' } }, include: { items: true } } } } };
 const tableInput = z.object({ number: z.coerce.string().trim().min(1), seats: z.coerce.number().int().min(1).max(50), status: z.enum(['AVAILABLE', 'OCCUPIED', 'RESERVED', 'ATTENTION']).optional(), note: z.string().trim().max(240).optional().nullable() });
 
 router.get('/', asyncHandler(async (req, res) => {
@@ -39,12 +39,15 @@ router.delete('/:id', roles('ADMIN', 'MANAGER'), asyncHandler(async (req, res) =
 router.post('/:id/open', asyncHandler(async (req, res) => {
   const table = await prisma.restaurantTable.findFirst({ where: { id: req.params.id, restaurantId: req.user.restaurantId } });
   if (!table) throw new HttpError(404, 'Mesa não encontrada');
-  const body = z.object({ customerId: z.string().optional().nullable(), forceNew: z.boolean().optional() }).parse(req.body);
+  const body = z.object({ customerId: z.string().optional().nullable(), commandCardId: z.string().optional().nullable(), forceNew: z.boolean().optional() }).parse(req.body);
+  const commandCard = body.commandCardId ? await prisma.commandCard.findFirst({ where: { id: body.commandCardId, restaurantId: req.user.restaurantId, active: true }, include: { tabs: { where: { status: 'OPEN' } } } }) : null;
+  if (body.commandCardId && !commandCard) throw new HttpError(404, 'Comanda física não encontrada ou desativada');
+  if (commandCard?.tabs.length) throw new HttpError(409, `A comanda #${commandCard.number} já está em uso`);
   const existing = body.forceNew ? null : await prisma.tab.findFirst({ where: { tableId: table.id, status: 'OPEN', ...(body.customerId ? { customerId: body.customerId } : {}) }, include: { customer: true, orders: { include: { items: true } } } });
   if (existing) return res.json(existing);
   const tab = await prisma.$transaction(async tx => {
     await tx.restaurantTable.update({ where: { id: table.id }, data: { status: 'OCCUPIED' } });
-    return tx.tab.create({ data: { restaurantId: req.user.restaurantId, tableId: table.id, customerId: body.customerId || null, waiterId: req.user.id }, include: { table: true, customer: true, orders: true } });
+    return tx.tab.create({ data: { restaurantId: req.user.restaurantId, tableId: table.id, customerId: body.customerId || null, waiterId: req.user.id, commandCardId: commandCard?.id || null, ...(commandCard ? { number: commandCard.number } : {}) }, include: { commandCard: true, table: true, customer: true, orders: true } });
   });
   req.app.locals.io.to(req.user.restaurantId).emit('tab:opened', tab);
   res.status(201).json(tab);

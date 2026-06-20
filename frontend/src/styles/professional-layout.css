@@ -100,6 +100,12 @@ body { background: #f6f7f6; }
 }
 .resource-tabs button.active span { background: #e3f2eb; color: #167a5b; }
 .tabs-panel table { min-width: 900px; }
+.command-card-status { display: inline-flex; padding: 6px 10px; border-radius: 999px; font-size: 11px; font-weight: 700; }
+.command-card-status.free { background: #e3f3eb; color: #126f51; }
+.command-card-status.in-use { background: #fff0dc; color: #a45c16; }
+.command-card-status.inactive { background: #ecefed; color: #66736d; }
+.row-disabled { opacity: .62; }
+.modal-help { margin: -8px 0 18px; color: #5c6b64; font-size: 13px; line-height: 1.55; }
 
 /* Visão geral */
 .dashboard-grid { gap: 20px; }

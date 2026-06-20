@@ -83,6 +83,7 @@ model Restaurant {
   customers Customer[]
   cashSessions CashSession[]
   payments Payment[]
+  commandCards CommandCard[]
   @@map("restaurants")
 }
 
@@ -118,9 +119,24 @@ model RestaurantTable {
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
   tabs Tab[]
+  deliveryOrders Order[] @relation("OrderDeliveryTable")
   calls ServiceCall[]
   @@unique([restaurantId,number])
   @@map("tables")
+}
+
+model CommandCard {
+  id String @id @default(cuid())
+  restaurantId String @map("restaurant_id")
+  restaurant Restaurant @relation(fields:[restaurantId], references:[id], onDelete:Cascade)
+  number Int
+  active Boolean @default(true)
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+  tabs Tab[]
+  @@unique([restaurantId,number])
+  @@index([restaurantId,active])
+  @@map("command_cards")
 }
 
 model Customer {
@@ -148,6 +164,8 @@ model Tab {
   customer Customer? @relation(fields:[customerId], references:[id])
   waiterId String? @map("waiter_id")
   waiter User? @relation("WaiterTabs", fields:[waiterId], references:[id])
+  commandCardId String? @map("command_card_id")
+  commandCard CommandCard? @relation(fields:[commandCardId], references:[id])
   status TabStatus @default(OPEN)
   subtotal Decimal @default(0) @db.Decimal(12,2)
   serviceFee Decimal @default(0) @map("service_fee") @db.Decimal(12,2)
@@ -194,6 +212,8 @@ model Order {
   number Int @default(autoincrement())
   tabId String @map("tab_id")
   tab Tab @relation(fields:[tabId], references:[id], onDelete:Cascade)
+  deliveryTableId String? @map("delivery_table_id")
+  deliveryTable RestaurantTable? @relation("OrderDeliveryTable", fields:[deliveryTableId], references:[id])
   waiterId String? @map("waiter_id")
   waiter User? @relation("WaiterOrders", fields:[waiterId], references:[id])
   status OrderStatus @default(OPEN)
@@ -204,6 +224,7 @@ model Order {
   deliveredAt DateTime? @map("delivered_at")
   items OrderItem[]
   @@index([status,createdAt])
+  @@index([deliveryTableId])
   @@map("orders")
 }
 
