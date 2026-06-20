@@ -190,6 +190,9 @@ body { background: #f6f7f6; }
 .kds-card:last-child { border-bottom: 0; }
 .kds-card.late { border-top: 0; border-left-color: var(--red); }
 .kds-card-head { align-items: center; padding: 18px 20px; border: 0; border-right: 1px solid #e5e9e7; }
+.kds-order-meta { min-width: 0; }
+.kds-order-meta small { display: block; line-height: 1.55; }
+.kds-order-line { white-space: nowrap; }
 .kds-items { display: flex; flex-wrap: wrap; align-content: center; gap: 8px 24px; padding: 15px 22px; }
 .kds-items > div { min-width: 180px; padding: 7px 0; border: 0; }
 .kds-actions { display: flex; align-items: center; padding: 16px; border-left: 1px solid #e5e9e7; }
