@@ -1,10 +1,10 @@
-import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { api, getToken, setToken } from './api';
 import { connectSocket } from './socket';
 
 const Context = createContext(null);
 export const money = value => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(Number(value) || 0);
-const empty = { tables: [], customers: [], products: [], categories: [], orders: [], inventory: [], transactions: [], settings: { restaurant: 'Seu Restaurante', city: '', serviceFee: 10, slug: '' } };
+const empty = { tables: [], customers: [], products: [], categories: [], orders: [], inventory: [], transactions: [], receivables: [], settings: { restaurant: 'Seu Restaurante', city: '', serviceFee: 10, slug: '' } };
 const lower = value => String(value || '').toLowerCase();
 const sectors = { KITCHEN: 'cozinha', BAR: 'bar', GRILL: 'churrasqueira', DESSERT: 'sobremesa' };
 
@@ -17,6 +17,7 @@ function normalize({ tables = [], orders = [], products = [], categories = [], s
     orders: orders.map(order => ({ id: order.id, number: order.number, tableId: order.tab?.tableId, tabId: order.tabId, customerId: order.tab?.customerId, status: lower(order.status), createdAt: order.createdAt, startedAt: order.startedAt, items: order.items.map(item => ({ id: item.id, productId: item.productId, qty: item.quantity, note: item.note || '', unitPrice: Number(item.unitPrice) })) })),
     inventory: stock.map(item => ({ id: item.id, name: item.name, category: item.category, unit: item.unit, quantity: Number(item.quantity), min: Number(item.minimumStock) })),
     transactions: (finance.payments || []).map(payment => ({ id: payment.id, type: lower(payment.type) === 'withdrawal' ? 'withdrawal' : lower(payment.type) === 'supply' ? 'supply' : 'sale', description: payment.description || payment.type, amount: (payment.type === 'WITHDRAWAL' ? -1 : 1) * Number(payment.amount), payment: lower(payment.method), createdAt: payment.createdAt })),
+    receivables: (finance.receivables || []).map(tab => ({ ...tab, subtotal: Number(tab.subtotal), serviceFee: Number(tab.serviceFee), total: Number(tab.total) })),
     settings: { restaurant: settings.name || 'Seu Restaurante', city: settings.city || '', serviceFee: Number(settings.serviceFee ?? 10), slug: settings.slug || '' },
     financeSession: finance.session
   };
@@ -27,14 +28,20 @@ export function AppProvider({ children }) {
   const [user, setUser] = useState(null);
   const [ready, setReady] = useState(false);
   const [toast, setToast] = useState('');
+  const refreshPromise = useRef(null);
   const notify = useCallback(message => { setToast(message); window.setTimeout(() => setToast(''), 2800); }, []);
+  useEffect(() => { const onError = event => notify(event.detail); window.addEventListener('orbe:api-error', onError); return () => window.removeEventListener('orbe:api-error', onError); }, [notify]);
 
-  const refresh = useCallback(async () => {
-    if (!getToken()) return;
-    const [tables, orders, products, categories, stock, customers, finance, settings] = await Promise.all([
-      api('/tables'), api('/orders'), api('/catalog/products'), api('/catalog/categories'), api('/stock'), api('/customers'), api('/finance/summary'), api('/settings')
-    ]);
-    setData(normalize({ tables, orders, products, categories, stock, customers, finance, settings }));
+  const refresh = useCallback(() => {
+    if (!getToken()) return Promise.resolve();
+    if (refreshPromise.current) return refreshPromise.current;
+    refreshPromise.current = (async () => {
+      const [tables, orders, products, categories, stock, customers, finance, settings] = await Promise.all([
+        api('/tables'), api('/orders'), api('/catalog/products'), api('/catalog/categories'), api('/stock'), api('/customers'), api('/finance/summary'), api('/settings')
+      ]);
+      setData(normalize({ tables, orders, products, categories, stock, customers, finance, settings }));
+    })().finally(() => { refreshPromise.current = null; });
+    return refreshPromise.current;
   }, []);
 
   useEffect(() => { (async () => { if (getToken()) try { setUser(await api('/auth/me')); await refresh(); } catch { setToken(null); } setReady(true); })(); }, [refresh]);
@@ -64,15 +71,15 @@ export function AppProvider({ children }) {
   async function updateOrder(id, status) { await api(`/orders/${id}/status`, { method: 'PATCH', body: { status: status.toUpperCase() } }); await refresh(); notify('Status atualizado.'); }
   async function moveStock(id, type, quantity, reason = '') { await api(`/stock/${id}/movements`, { method: 'POST', body: { type: type.toUpperCase(), quantity: Number(quantity), reason } }); await refresh(); notify('Movimentação registrada.'); }
   async function openTable(id, customerId) { const tab = await api(`/tables/${id}/open`, { method: 'POST', body: { customerId: customerId || null } }); await refresh(); notify('Comanda aberta.'); return tab; }
-  async function closeTable(id, paymentMethod = 'PIX') { const tab = await api(`/tables/${id}/close`, { method: 'POST', body: { serviceFeePercent: data.settings.serviceFee, paymentMethod } }); await refresh(); notify('Comanda fechada e venda registrada.'); return tab; }
   async function cashAction(action, body) { const result = await api(`/finance/${action}`, { method: 'POST', body }); await refresh(); notify('Caixa atualizado.'); return result; }
+  async function payReceivable(tabId, method) { const result = await api(`/finance/receivables/${tabId}/pay`, { method: 'POST', body: { method } }); await refresh(); notify('Pagamento confirmado e mesa liberada.'); return result; }
   async function saveSettings(values) { const settings = await api('/settings', { method: 'PUT', body: { name: values.restaurant, city: values.city, serviceFee: Number(values.serviceFee) } }); setData(current => ({ ...current, settings: { restaurant: settings.name, city: settings.city || '', serviceFee: Number(settings.serviceFee), slug: settings.slug } })); notify('Configurações salvas no banco.'); }
   async function resolveCall(id) { await api(`/service-calls/${id}/resolve`, { method: 'PATCH' }); await refresh(); notify('Chamado atendido.'); }
 
   const orderTotal = order => (order?.items || []).reduce((sum, item) => sum + (item.unitPrice ?? data.products.find(product => product.id === item.productId)?.price ?? 0) * item.qty, 0);
   const tableTotal = id => data.orders.filter(order => order.tableId === id && order.status !== 'cancelled').reduce((sum, order) => sum + orderTotal(order), 0);
-  const value = useMemo(() => ({ data, setData, user, ready, login, register, logout, refresh, reset: refresh, toast, notify, mutate, remove, createOrder, updateOrder, moveStock, openTable, closeTable, cashAction, saveSettings, resolveCall, orderTotal, tableTotal }), [data, user, ready, toast, notify, refresh]);
-  return <Context.Provider value={value}>{children}{toast && <div className="toast">✓ {toast}</div>}</Context.Provider>;
+  const value = useMemo(() => ({ data, setData, user, ready, login, register, logout, refresh, reset: refresh, toast, notify, mutate, remove, createOrder, updateOrder, moveStock, openTable, cashAction, payReceivable, saveSettings, resolveCall, orderTotal, tableTotal }), [data, user, ready, toast, notify, refresh]);
+  return <Context.Provider value={value}>{children}<div className="global-request-indicator">Processando sua ação</div>{toast && <div className="toast">✓ {toast}</div>}</Context.Provider>;
 }
 
 export const useApp = () => useContext(Context);

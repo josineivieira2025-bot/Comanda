@@ -50,25 +50,7 @@ router.post('/:id/open', asyncHandler(async (req, res) => {
 }));
 
 router.post('/:id/close', asyncHandler(async (req, res) => {
-  const tab = await prisma.tab.findFirst({ where: { tableId: req.params.id, restaurantId: req.user.restaurantId, status: 'OPEN' }, include: { orders: { include: { items: true } } } });
-  if (!tab) throw new HttpError(404, 'Comanda aberta não encontrada');
-  const subtotal = tab.orders.filter(o => o.status !== 'CANCELLED').flatMap(o => o.items).reduce((sum, item) => sum + Number(item.unitPrice) * item.quantity, 0);
-  const restaurant = await prisma.restaurant.findUnique({ where: { id: req.user.restaurantId }, select: { serviceFee: true } });
-  const fee = subtotal * Number(req.body.serviceFeePercent ?? restaurant?.serviceFee ?? 10) / 100;
-  const total = subtotal + fee;
-  const paymentMethod = req.body.paymentMethod || 'PIX';
-  if (!['CASH', 'PIX', 'CARD', 'VOUCHER'].includes(paymentMethod)) throw new HttpError(400, 'Forma de pagamento inválida');
-  const closed = await prisma.$transaction(async tx => {
-    const result = await tx.tab.update({ where: { id: tab.id }, data: { status: 'CLOSED', subtotal, serviceFee: fee, total, closedAt: new Date() } });
-    await tx.restaurantTable.update({ where: { id: req.params.id }, data: { status: 'AVAILABLE' } });
-    if (total > 0) {
-      const session = await tx.cashSession.findFirst({ where: { restaurantId: req.user.restaurantId, status: 'OPEN' } });
-      await tx.payment.create({ data: { restaurantId: req.user.restaurantId, tabId: tab.id, cashSessionId: session?.id, userId: req.user.id, type: 'SALE', method: paymentMethod, amount: total, description: `Comanda #${tab.number}` } });
-    }
-    return result;
-  });
-  req.app.locals.io.to(req.user.restaurantId).emit('tab:closed', closed);
-  res.json(closed);
+  throw new HttpError(409, 'A mesa só pode ser liberada após o pagamento no Financeiro');
 }));
 
 export default router;
