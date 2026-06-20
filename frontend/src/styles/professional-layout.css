@@ -1,0 +1,283 @@
+/* Interface operacional: menos cartões, mais listas, faixas e hierarquia. */
+body { background: #f6f7f6; }
+.main-area { background: #f6f7f6; }
+.main-area > header { border-bottom-color: #d8dedb; box-shadow: none; }
+.content { max-width: 1480px; padding-top: 34px; }
+
+.page-heading {
+  align-items: center;
+  margin-bottom: 26px;
+  padding-bottom: 23px;
+  border-bottom: 1px solid #d9dfdc;
+}
+.page-heading h1 { font-size: 31px; letter-spacing: -1px; }
+.page-heading p { max-width: 720px; color: #69756f; }
+
+.metrics,
+.metrics.compact,
+.finance-metrics {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0;
+  margin-bottom: 26px;
+  border-block: 1px solid #d8dfdb;
+  background: #fff;
+}
+.metrics.compact { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.metric-card,
+.finance-metric {
+  min-height: 108px;
+  padding: 20px 24px;
+  border: 0;
+  border-right: 1px solid #e0e5e2;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+.metric-card:last-child,
+.finance-metric:last-child { border-right: 0; }
+.metric-card:hover,
+.finance-metric:hover { transform: none; border-color: #e0e5e2; box-shadow: none; }
+.metric-card > strong { margin: 9px 0 5px; font-size: 27px; }
+.finance-metric { min-height: 108px; }
+.finance-metric-dark { color: #17211d; background: transparent; }
+.finance-metric-dark span,
+.finance-metric-dark small { color: #75827c; }
+.finance-metric-dark .metric-icon { background: #edf6f1; color: #167a5b; }
+
+.panel,
+.data-panel,
+.finance-panel,
+.receivables-panel {
+  border: 1px solid #dce2df;
+  border-radius: 3px;
+  background: #fff;
+  box-shadow: none;
+}
+.panel:hover { border-color: #d2d9d5; box-shadow: none; }
+.panel-head { min-height: 76px; padding-inline: 22px; border-bottom: 1px solid #e2e7e4; }
+.panel-head h2 { font-size: 16px; }
+
+.summary-strip {
+  margin-bottom: 24px;
+  border: 0;
+  border-block: 1px solid #d8dfdb;
+  border-radius: 0;
+  background: #fff;
+}
+.summary-strip span { padding: 17px 21px; }
+
+/* Visão geral */
+.dashboard-grid { gap: 20px; }
+.dashboard-grid .panel { border-radius: 3px; }
+.table-preview { grid-template-columns: 1fr; gap: 0; padding: 0; }
+.table-tile {
+  display: grid;
+  grid-template-columns: 90px 110px 1fr auto;
+  align-items: center;
+  gap: 14px;
+  min-height: 56px;
+  padding: 9px 18px;
+  border: 0;
+  border-top: 1px solid #e8ecea;
+  border-radius: 0;
+  background: #fff;
+}
+.table-tile:hover { transform: none; background: #f7faf8; box-shadow: none; }
+.table-tile > b { text-align: right; }
+.compact-list article { padding: 14px 0; }
+.ai-card { border-radius: 3px; box-shadow: none; }
+.ai-action { border-radius: 3px; }
+
+/* Salão em formato de lista operacional */
+.tables-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 0;
+  border: 1px solid #dce2df;
+  background: #fff;
+}
+.table-card {
+  display: grid;
+  grid-template-columns: 125px minmax(300px, 1fr) auto;
+  align-items: center;
+  gap: 18px;
+  min-height: 104px;
+  padding: 15px 20px;
+  border: 0;
+  border-bottom: 1px solid #e1e6e3;
+  border-left: 4px solid #cbd3cf;
+  border-radius: 0;
+  background: #fff;
+}
+.table-card:last-child { border-bottom: 0; }
+.table-card:hover { transform: none; background: #fafcfb; box-shadow: none; }
+.table-card.occupied { border-left-color: #39a57f; border-top: 0; }
+.table-card.reserved { border-left-color: #8e80dc; border-top: 0; }
+.table-card.attention { border-left-color: #e39349; border-top: 0; }
+.table-card-head { align-items: center; justify-content: flex-start; gap: 15px; }
+.table-card-head h2 { font-size: 27px; }
+.table-card-body {
+  display: grid;
+  grid-template-columns: 160px 130px 1fr;
+  align-items: center;
+  gap: 16px;
+  margin: 0;
+}
+.table-card-body > small { grid-column: auto; }
+.table-card-body > b { text-align: left; }
+.table-card .card-actions { min-width: 285px; padding: 0; border: 0; }
+.table-card .call-alert { grid-column: 2; justify-self: start; }
+
+/* KDS: fila vertical, leitura rápida */
+.kds-board {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 0;
+  border: 1px solid #dce2df;
+  background: #fff;
+}
+.kds-card {
+  display: grid;
+  grid-template-columns: 235px minmax(280px, 1fr) 190px;
+  align-items: stretch;
+  border: 0;
+  border-bottom: 1px solid #dfe5e2;
+  border-left: 4px solid #e0a451;
+  border-radius: 0;
+  background: #fff;
+}
+.kds-card:last-child { border-bottom: 0; }
+.kds-card.late { border-top: 0; border-left-color: var(--red); }
+.kds-card-head { align-items: center; padding: 18px 20px; border: 0; border-right: 1px solid #e5e9e7; }
+.kds-items { display: flex; flex-wrap: wrap; align-content: center; gap: 8px 24px; padding: 15px 22px; }
+.kds-items > div { min-width: 180px; padding: 7px 0; border: 0; }
+.kds-actions { display: flex; align-items: center; padding: 16px; border-left: 1px solid #e5e9e7; }
+.kds-actions button { border-radius: 3px; }
+.sector-tabs { padding-bottom: 14px; border-bottom: 1px solid #dce2df; }
+.sector-tabs button { border-radius: 3px; }
+
+/* Financeiro */
+.receivables-grid { display: grid; grid-template-columns: 1fr; gap: 0; padding: 0; }
+.receivable-card {
+  grid-template-columns: 70px 1fr 180px 185px;
+  gap: 18px;
+  padding: 15px 22px;
+  border: 0;
+  border-bottom: 1px solid #e1e6e3;
+  border-radius: 0;
+  background: #fff;
+}
+.receivable-card:last-child { border-bottom: 0; }
+.receivable-table { width: 46px; height: 46px; border-radius: 3px; }
+.receivable-card > .primary { grid-column: auto; width: auto; }
+.cash-status { margin: 0; padding: 17px 22px; border: 0; border-top: 1px solid #dfe5e2; border-radius: 0; }
+.cash-status-icon { border-radius: 3px; }
+
+/* Cardápio administrativo em linhas */
+.menu-admin-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 0;
+  border: 1px solid #dce2df;
+  background: #fff;
+}
+.menu-admin-card {
+  display: grid;
+  grid-template-columns: 104px minmax(280px, 1fr) 280px;
+  align-items: center;
+  min-height: 98px;
+  border: 0;
+  border-bottom: 1px solid #e1e6e3;
+  border-radius: 0;
+  background: #fff;
+}
+.menu-admin-card:last-child { border-bottom: 0; }
+.menu-admin-card:hover { transform: none; background: #fafcfb; box-shadow: none; }
+.menu-admin-card > img { width: 104px; height: 96px; border-radius: 0; }
+.menu-admin-card > div:nth-child(2) { padding: 14px 22px; }
+.menu-admin-card .card-actions { margin-right: 18px; padding: 0; border: 0; }
+
+/* Garçom */
+.waiter-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 0;
+  border: 1px solid #d7dfdb;
+  background: #fff;
+}
+.waiter-grid article {
+  display: grid;
+  grid-template-columns: 190px 1fr 150px 210px;
+  align-items: center;
+  gap: 18px;
+  padding: 16px 20px;
+  border: 0;
+  border-bottom: 1px solid #e0e6e3;
+  border-left: 4px solid #cdd5d1;
+  border-radius: 0;
+}
+.waiter-grid article:last-child { border-bottom: 0; }
+.waiter-grid article > b { margin: 0; }
+.waiter-grid article > div:last-child { margin: 0; }
+
+/* Formulários e configurações */
+.settings-grid,
+.report-grid { gap: 22px; }
+.settings-form,
+.access-links { border-radius: 3px; }
+.access-link,
+.order-link-summary,
+.product-picker article { border-radius: 3px; box-shadow: none; }
+.access-link { margin-inline: 0; border-inline: 0; border-bottom: 1px solid #e3e8e5; }
+.product-picker { gap: 0; border: 1px solid #e0e5e2; }
+.product-picker article { border: 0; border-bottom: 1px solid #e5e9e7; }
+
+/* Cardápios públicos também mais editoriais */
+.public-menu-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0; }
+.public-menu-grid article {
+  display: grid;
+  grid-template-columns: 180px 1fr;
+  border-bottom: 1px solid #dedfd9;
+  border-radius: 0;
+  box-shadow: none;
+}
+.public-menu-grid img { width: 180px; height: 100%; min-height: 190px; }
+.portal-products { gap: 0; }
+.portal-products article { border-bottom: 1px solid #e0e4e1; border-radius: 0; }
+
+@media (max-width: 1100px) {
+  .table-card { grid-template-columns: 110px 1fr; }
+  .table-card .card-actions { grid-column: 1 / -1; min-width: 0; }
+  .kds-card { grid-template-columns: 210px 1fr; }
+  .kds-actions { grid-column: 1 / -1; border: 0; border-top: 1px solid #e5e9e7; }
+  .receivable-card { grid-template-columns: 60px 1fr 160px; }
+  .receivable-card > .primary { grid-column: 1 / -1; }
+}
+
+@media (max-width: 700px) {
+  .content { padding-top: 22px; }
+  .metrics,
+  .metrics.compact,
+  .finance-metrics { grid-template-columns: 1fr 1fr; }
+  .metric-card:nth-child(2n) { border-right: 0; }
+  .metric-card { border-bottom: 1px solid #e0e5e2; }
+  .table-card,
+  .kds-card,
+  .menu-admin-card,
+  .waiter-grid article { display: block; }
+  .table-card-body { grid-template-columns: 1fr auto; margin: 13px 0; }
+  .table-card-body > small { grid-column: 1 / -1; }
+  .table-card .card-actions { display: flex; }
+  .kds-card-head { border-right: 0; }
+  .kds-actions { border-left: 0; }
+  .menu-admin-card > img { width: 100%; height: 160px; }
+  .menu-admin-card .card-actions { margin: 0; padding: 12px 16px; }
+  .waiter-grid article > b { margin-top: 12px; }
+  .waiter-grid article > div:last-child { margin-top: 13px; }
+  .receivable-card { grid-template-columns: 52px 1fr; }
+  .receivable-total { grid-column: 2; text-align: left; }
+  .public-menu-grid { grid-template-columns: 1fr; }
+  .public-menu-grid article { grid-template-columns: 120px 1fr; }
+  .public-menu-grid img { width: 120px; min-height: 160px; }
+}
