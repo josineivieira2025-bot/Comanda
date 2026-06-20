@@ -1,0 +1,2 @@
+.sidebar{overflow-y:auto;overflow-x:hidden;overscroll-behavior:contain;scrollbar-width:thin;scrollbar-color:#34443c transparent}.sidebar::-webkit-scrollbar{width:7px}.sidebar::-webkit-scrollbar-track{background:transparent}.sidebar::-webkit-scrollbar-thumb{background:#34443c;border-radius:8px}.sidebar nav{flex:0 0 auto}.sidebar-bottom{padding-bottom:4px}
+@media(max-height:760px) and (min-width:901px){.sidebar{padding-top:20px}.sidebar .brand{margin-bottom:14px}.sidebar .unit-picker{margin-bottom:18px}.sidebar a{height:43px}.sidebar-bottom{margin-top:16px}}

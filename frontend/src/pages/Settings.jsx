@@ -10,7 +10,7 @@ export default function Settings() {
   useEffect(() => setForm(data.settings), [data.settings]);
   async function save(event) { event.preventDefault(); await saveSettings(form); }
   async function copy(value, label) { await navigator.clipboard.writeText(value); setCopied(label); notify('Link copiado.'); setTimeout(() => setCopied(''), 1800); }
-  const publicMenu = `${window.location.origin}/cardapio/${data.settings.slug || ''}`.replace(/\/$/, '');
+  const publicMenu = `${window.location.origin}/#/cardapio/${data.settings.slug || ''}`.replace(/\/$/, '');
   return <>
     <PageHeader title="Configurações" description="Identidade da unidade e links públicos salvos no banco."><span className="live"><i /> Dados sincronizados</span></PageHeader>
     <div className="settings-grid">
@@ -25,8 +25,8 @@ export default function Settings() {
       <section className="panel access-links">
         <div className="panel-head"><div><h2>Acessos públicos</h2><p>Compartilhe com equipe e clientes</p></div></div>
         <LinkRow label="Cardápio público" value={publicMenu} copied={copied} onCopy={copy} />
-        <LinkRow label="Aplicativo do garçom" value={`${window.location.origin}/garcom`} copied={copied} onCopy={copy} />
-        {data.tables.slice(0, 4).map(table => <LinkRow key={table.id} label={`Portal da mesa ${table.number}`} value={`${window.location.origin}/mesa/${table.id}`} copied={copied} onCopy={copy} />)}
+        <LinkRow label="Aplicativo do garçom" value={`${window.location.origin}/#/garcom`} copied={copied} onCopy={copy} />
+        {data.tables.slice(0, 4).map(table => <LinkRow key={table.id} label={`Portal da mesa ${table.number}`} value={`${window.location.origin}/#/mesa/${table.id}`} copied={copied} onCopy={copy} />)}
       </section>
     </div>
   </>;
