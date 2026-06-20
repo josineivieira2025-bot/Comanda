@@ -81,6 +81,7 @@ export function AppProvider({ children }) {
   async function updateOrder(id, status) { await api(`/orders/${id}/status`, { method: 'PATCH', body: { status: status.toUpperCase() } }); await refresh(); notify('Status atualizado.'); }
   async function moveStock(id, type, quantity, reason = '') { await api(`/stock/${id}/movements`, { method: 'POST', body: { type: type.toUpperCase(), quantity: Number(quantity), reason } }); await refresh(); notify('Movimentação registrada.'); }
   async function openTable(id, customerId) { const tab = await api(`/tables/${id}/open`, { method: 'POST', body: { customerId: customerId || null } }); await refresh(); notify('Comanda aberta.'); return tab; }
+  async function createTab(tableId, customerId) { const tab = await api(`/tables/${tableId}/open`, { method: 'POST', body: { customerId: customerId || null, forceNew: true } }); await refresh(); notify(`Comanda #${String(tab.number).padStart(6, '0')} aberta.`); return tab; }
   async function cashAction(action, body) { const result = await api(`/finance/${action}`, { method: 'POST', body }); await refresh(); notify('Caixa atualizado.'); return result; }
   async function payReceivable(tabId, method) { const result = await api(`/finance/receivables/${tabId}/pay`, { method: 'POST', body: { method } }); await refresh(); notify('Pagamento confirmado e mesa liberada.'); return result; }
   async function saveSettings(values) { const settings = await api('/settings', { method: 'PUT', body: { name: values.restaurant, city: values.city, serviceFee: Number(values.serviceFee) } }); setData(current => ({ ...current, settings: { restaurant: settings.name, city: settings.city || '', serviceFee: Number(settings.serviceFee), slug: settings.slug } })); notify('Configurações salvas no banco.'); }
@@ -94,7 +95,7 @@ export function AppProvider({ children }) {
       .filter(order => activeTabIds.includes(order.tabId) && order.status !== 'cancelled')
       .reduce((sum, order) => sum + orderTotal(order), 0);
   };
-  const value = useMemo(() => ({ data, setData, user, ready, login, register, logout, refresh, reset: refresh, toast, notify, mutate, remove, createOrder, updateOrder, moveStock, openTable, cashAction, payReceivable, saveSettings, resolveCall, orderTotal, tableTotal }), [data, user, ready, toast, notify, refresh]);
+  const value = useMemo(() => ({ data, setData, user, ready, login, register, logout, refresh, reset: refresh, toast, notify, mutate, remove, createOrder, updateOrder, moveStock, openTable, createTab, cashAction, payReceivable, saveSettings, resolveCall, orderTotal, tableTotal }), [data, user, ready, toast, notify, refresh]);
   return <Context.Provider value={value}>{children}<div className="global-request-indicator">Processando sua ação</div>{toast && <div className="toast">✓ {toast}</div>}</Context.Provider>;
 }
 

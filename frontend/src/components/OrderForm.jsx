@@ -4,7 +4,7 @@ import { useApp, money } from '../services/AppContext';
 
 const tabLabel = tab => `Comanda #${String(tab.number).padStart(6, '0')} · ${tab.customer?.name || 'Cliente avulso'}`;
 
-export default function OrderForm({ defaultTableId = '', onDone }) {
+export default function OrderForm({ defaultTableId = '', defaultTabId = '', onDone }) {
   const { data, createOrder } = useApp();
   const [tableId, setTableId] = useState(defaultTableId);
   const [tabId, setTabId] = useState('new');
@@ -17,10 +17,10 @@ export default function OrderForm({ defaultTableId = '', onDone }) {
 
   useEffect(() => {
     const table = data.tables.find(item => item.id === tableId);
-    const firstTab = table?.tabs?.[0];
-    setTabId(firstTab?.id || 'new');
-    setCustomerId(firstTab?.customerId || '');
-  }, [tableId, data.tables]);
+    const selectedTab = table?.tabs?.find(tab => tab.id === defaultTabId) || table?.tabs?.[0];
+    setTabId(selectedTab?.id || 'new');
+    setCustomerId(selectedTab?.customerId || '');
+  }, [tableId, defaultTabId, data.tables]);
 
   const add = id => setItems(current => { const found = current.find(item => item.productId === id); return found ? current.map(item => item.productId === id ? { ...item, qty: item.qty + 1 } : item) : [...current, { productId: id, qty: 1, note: '' }]; });
   const change = (id, amount) => setItems(current => current.map(item => item.productId === id ? { ...item, qty: Math.max(0, item.qty + amount) } : item).filter(item => item.qty));

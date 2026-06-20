@@ -67,6 +67,40 @@ body { background: #f6f7f6; }
 }
 .summary-strip span { padding: 17px 21px; }
 
+.resource-tabs {
+  display: flex;
+  gap: 28px;
+  margin: -5px 0 22px;
+  border-bottom: 1px solid #d9dfdc;
+}
+.resource-tabs button {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 45px;
+  padding: 0 2px;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  background: transparent;
+  color: #69756f;
+  font-size: 12px;
+  font-weight: 600;
+}
+.resource-tabs button:hover { color: #17211d; }
+.resource-tabs button.active { border-bottom-color: #167a5b; color: #167a5b; }
+.resource-tabs button svg { width: 16px; height: 16px; }
+.resource-tabs button span {
+  min-width: 22px;
+  padding: 2px 6px;
+  border-radius: 10px;
+  background: #e9efec;
+  color: #5f6d66;
+  font-size: 9px;
+  text-align: center;
+}
+.resource-tabs button.active span { background: #e3f2eb; color: #167a5b; }
+.tabs-panel table { min-width: 900px; }
+
 /* Visão geral */
 .dashboard-grid { gap: 20px; }
 .dashboard-grid .panel { border-radius: 3px; }
