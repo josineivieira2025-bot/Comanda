@@ -12,7 +12,7 @@ export default function Settings() {
   async function copy(value, label) { await navigator.clipboard.writeText(value); setCopied(label); notify('Link copiado.'); setTimeout(() => setCopied(''), 1800); }
   const publicMenu = `${window.location.origin}/#/cardapio/${data.settings.slug || ''}`.replace(/\/$/, '');
   return <>
-    <PageHeader title="Configurações" description="Identidade da unidade e links públicos salvos no banco."><span className="live"><i /> Dados sincronizados</span></PageHeader>
+    <PageHeader title="Configurações"><span className="live"><i /> Dados sincronizados</span></PageHeader>
     <div className="settings-grid">
       <form className="panel settings-form" onSubmit={save}>
         <div className="panel-head"><div><h2>Dados da unidade</h2><p>Informações exibidas em toda a plataforma</p></div></div>

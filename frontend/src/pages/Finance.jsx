@@ -26,7 +26,7 @@ export default function Finance() {
   async function toggleCash() { if (data.financeSession) await cashAction('cash/close', { closingAmount: balance }); else await cashAction('cash/open', { openingAmount: 0 }); }
 
   return <>
-    <PageHeader eyebrow="GESTÃO FINANCEIRA" title="Financeiro" description="Acompanhe vendas, contas pendentes e o caixa da operação."><button className="secondary" onClick={() => setModal('withdrawal')}><ArrowDownLeft /> Registrar sangria</button><button className="primary" onClick={() => setModal('supply')}><Plus /> Novo suprimento</button></PageHeader>
+    <PageHeader eyebrow="GESTÃO FINANCEIRA" title="Financeiro"><button className="secondary" onClick={() => setModal('withdrawal')}><ArrowDownLeft /> Registrar sangria</button><button className="primary" onClick={() => setModal('supply')}><Plus /> Novo suprimento</button></PageHeader>
     <div className="metrics finance-metrics">{cardData.map(({ key, label, Icon, tone }) => <article className={`metric-card finance-metric finance-metric-${tone}`} key={key}><div className="metric-icon"><Icon /></div><div><span>{label}</span><strong>{money(values[key])}</strong><small>{key === 'balance' ? (data.financeSession ? 'Caixa aberto agora' : 'Caixa ainda fechado') : 'Atualizado em tempo real'}</small></div></article>)}</div>
 
     <section className="panel receivables-panel"><div className="panel-head"><div><span className="section-kicker">AGUARDANDO PAGAMENTO</span><h2>Contas prontas para receber</h2><p>Pedidos entregues permanecem aqui até o pagamento liberar a mesa</p></div><span className="receivable-count">{data.receivables.length} pendente(s)</span></div>

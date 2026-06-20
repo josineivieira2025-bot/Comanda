@@ -42,7 +42,7 @@ export default function Tables() {
   }
 
   return <>
-    <PageHeader title="Salão & comandas" description="Gerencie as mesas de entrega e as fichas físicas numeradas separadamente.">
+    <PageHeader title="Salão & comandas">
       {view === 'tables' ? <button className="primary" onClick={() => openTableEditor()}><Plus /> Cadastrar mesa</button> : <button className="primary" onClick={() => setRangeModal(true)}><Plus /> Cadastrar comandas</button>}
     </PageHeader>
 

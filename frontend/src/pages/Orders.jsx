@@ -16,7 +16,7 @@ export default function Orders() {
   const closeModal = () => { setOpen(false); setParams({}); };
 
   return <>
-    <PageHeader title="Pedidos" description="Do lançamento à entrega, com rastreabilidade por comanda e mesa."><button className="primary" onClick={() => setOpen(true)}><Plus /> Novo pedido</button></PageHeader>
+    <PageHeader title="Pedidos"><button className="primary" onClick={() => setOpen(true)}><Plus /> Novo pedido</button></PageHeader>
     <section className="panel data-panel"><div className="table-responsive"><table><thead><tr><th>Pedido</th><th>Comanda / entrega</th><th>Itens</th><th>Total</th><th>Status</th><th>Ações</th></tr></thead><tbody>{data.orders.map(order => {
       const table = data.tables.find(item => item.id === order.tableId);
       const client = data.customers.find(item => item.id === order.customerId);
