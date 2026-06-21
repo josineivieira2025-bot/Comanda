@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Save, ExternalLink, Copy, Check, UserPlus, Pencil, ShieldCheck, Power } from 'lucide-react';
+import { Save, ExternalLink, Copy, Check, UserPlus, Pencil, ShieldCheck, Power, ImagePlus, Trash2 } from 'lucide-react';
 import PageHeader from '../components/PageHeader';
 import Modal from '../components/Modal';
 import { useApp } from '../services/AppContext';
@@ -16,6 +16,19 @@ export default function Settings() {
   const [employee, setEmployee] = useState(blankEmployee);
   useEffect(() => setForm(data.settings), [data.settings]);
   async function save(event) { event.preventDefault(); await saveSettings(form); }
+  async function chooseLogo(event) {
+    const file = event.target.files?.[0];
+    event.target.value = '';
+    if (!file) return;
+    if (!file.type.startsWith('image/')) return notify('Escolha um arquivo de imagem.');
+    try {
+      const logoUrl = await resizeLogo(file);
+      setForm(current => ({ ...current, logoUrl }));
+      notify('Foto preparada. Clique em Salvar no banco.');
+    } catch {
+      notify('Não foi possível processar esta imagem.');
+    }
+  }
   async function copy(value, label) { await navigator.clipboard.writeText(value); setCopied(label); notify('Link copiado.'); setTimeout(() => setCopied(''), 1800); }
   const publicMenu = `${window.location.origin}/#/cardapio/${data.settings.slug || ''}`.replace(/\/$/, '');
   const isAdmin = user?.role === 'ADMIN';
@@ -56,6 +69,7 @@ export default function Settings() {
     <div className="settings-grid">
       <form className="panel settings-form" onSubmit={save}>
         <div className="panel-head"><div><h2>Dados da unidade</h2><p>Informações exibidas em toda a plataforma</p></div></div>
+        <div className="unit-logo-editor"><div className={`unit-logo-preview ${form.logoUrl ? 'has-image' : ''}`}>{form.logoUrl ? <img src={form.logoUrl} alt="Prévia da logo" /> : (form.restaurant?.[0] || 'R')}</div><div><b>Foto da empresa</b><span>Use uma imagem quadrada com boa iluminação.</span>{can('settings.edit') && <div className="unit-logo-actions"><label className="secondary"><ImagePlus /> Escolher foto<input type="file" accept="image/*" onChange={chooseLogo} /></label>{form.logoUrl && <button type="button" className="secondary danger-text" onClick={() => setForm(current => ({ ...current, logoUrl: '' }))}><Trash2 /> Remover</button>}</div>}</div></div>
         <label>Nome do restaurante<input required minLength="2" disabled={!can('settings.edit')} value={form.restaurant || ''} onChange={event => setForm({ ...form, restaurant: event.target.value })} /></label>
         <label>Cidade / unidade<input disabled={!can('settings.edit')} value={form.city || ''} onChange={event => setForm({ ...form, city: event.target.value })} /></label>
         <label>Taxa de serviço (%)<input type="number" min="0" max="30" step="0.1" disabled={!can('settings.edit')} value={form.serviceFee} onChange={event => setForm({ ...form, serviceFee: event.target.value })} /></label>
@@ -87,4 +101,24 @@ export default function Settings() {
 
 function LinkRow({ label, value, copied, onCopy }) {
   return <div className="access-link"><span><b>{label}</b><small>{value}</small></span><button className="icon-btn" onClick={() => onCopy(value, label)}>{copied === label ? <Check /> : <Copy />}</button><a className="icon-btn" href={value} target="_blank" rel="noreferrer"><ExternalLink /></a></div>;
+}
+
+function resizeLogo(file) {
+  return new Promise((resolve, reject) => {
+    const image = new Image();
+    const source = URL.createObjectURL(file);
+    image.onload = () => {
+      const size = Math.min(image.naturalWidth, image.naturalHeight);
+      const canvas = document.createElement('canvas');
+      canvas.width = 512;
+      canvas.height = 512;
+      const context = canvas.getContext('2d');
+      context.imageSmoothingQuality = 'high';
+      context.drawImage(image, (image.naturalWidth - size) / 2, (image.naturalHeight - size) / 2, size, size, 0, 0, 512, 512);
+      URL.revokeObjectURL(source);
+      resolve(canvas.toDataURL('image/webp', 0.84));
+    };
+    image.onerror = () => { URL.revokeObjectURL(source); reject(new Error('invalid image')); };
+    image.src = source;
+  });
 }

@@ -71,6 +71,7 @@ model Restaurant {
   name String
   slug String @unique
   city String?
+  logoUrl String? @map("logo_url")
   serviceFee Decimal @default(10) @db.Decimal(5,2)
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")

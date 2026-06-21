@@ -18,7 +18,7 @@ export default function Layout() {
     {menuOpen && <button className="sidebar-overlay" aria-label="Fechar menu" onClick={() => setMenuOpen(false)} />}
     <aside className={`sidebar ${menuOpen ? 'sidebar-open' : ''}`}>
       <Brand><button className="mobile-close" onClick={() => setMenuOpen(false)}><X /></button></Brand>
-      <div className="unit-picker"><div className="unit-logo">{data.settings.restaurant?.[0] || 'O'}</div><div><small>UNIDADE ATUAL</small><b>{data.settings.restaurant}</b><span>{data.settings.city || 'Operação conectada'}</span></div><ChevronDown /></div>
+      <div className="unit-picker"><div className={`unit-logo ${data.settings.logoUrl ? 'has-image' : ''}`}>{data.settings.logoUrl ? <img src={data.settings.logoUrl} alt={`Logo ${data.settings.restaurant}`} /> : (data.settings.restaurant?.[0] || 'O')}</div><div><small>UNIDADE ATUAL</small><b>{data.settings.restaurant}</b><span>{data.settings.city || 'Operação conectada'}</span></div><ChevronDown /></div>
       <nav><small>OPERAÇÃO</small>{nav.filter(([, , , permission]) => can(user, permission)).map(([to, Icon, label]) => <NavLink key={to} to={to} end={to === '/'} onClick={() => setMenuOpen(false)}><Icon /><span>{label}</span>{label === 'Produção KDS' && active > 0 && <em>{active}</em>}</NavLink>)}</nav>
       <div className="sidebar-bottom">{can(user, 'settings.view') && <NavLink to="/configuracoes" onClick={() => setMenuOpen(false)}><Settings /><span>Configurações</span></NavLink>}<button className="profile profile-button" onClick={leave}><div className="avatar">{user?.name?.slice(0, 2).toUpperCase()}</div><div><b>{user?.name}</b><span>{user?.role}</span></div><LogOut /></button></div>
     </aside>

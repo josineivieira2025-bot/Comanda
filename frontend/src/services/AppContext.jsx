@@ -6,7 +6,7 @@ import { can, canAny } from './permissions';
 const Context = createContext(null);
 export const money = value => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(Number(value) || 0);
 export const orderNumber = value => String(Number(value) || 0).padStart(7, '0');
-const empty = { tables: [], commandCards: [], customers: [], products: [], categories: [], orders: [], inventory: [], employees: [], transactions: [], receivables: [], settings: { restaurant: 'Seu Restaurante', city: '', serviceFee: 10, slug: '' } };
+const empty = { tables: [], commandCards: [], customers: [], products: [], categories: [], orders: [], inventory: [], employees: [], transactions: [], receivables: [], settings: { restaurant: 'Seu Restaurante', city: '', logoUrl: '', serviceFee: 10, slug: '' } };
 const lower = value => String(value || '').toLowerCase();
 const sectors = { KITCHEN: 'cozinha', BAR: 'bar', GRILL: 'churrasqueira', DESSERT: 'sobremesa' };
 
@@ -31,7 +31,7 @@ function normalize({ tables = [], commandCards = [], orders = [], products = [],
     employees: users,
     transactions: (finance.payments || []).map(payment => ({ id: payment.id, type: lower(payment.type) === 'withdrawal' ? 'withdrawal' : lower(payment.type) === 'supply' ? 'supply' : 'sale', description: payment.description || payment.type, amount: (payment.type === 'WITHDRAWAL' ? -1 : 1) * Number(payment.amount), payment: lower(payment.method), createdAt: payment.createdAt })),
     receivables: (finance.receivables || []).map(tab => ({ ...tab, subtotal: Number(tab.subtotal), serviceFee: Number(tab.serviceFee), total: Number(tab.total), items: (tab.items || []).map(item => ({ ...item, unitPrice: Number(item.unitPrice), total: Number(item.total) })) })),
-    settings: { restaurant: settings.name || 'Seu Restaurante', city: settings.city || '', serviceFee: Number(settings.serviceFee ?? 10), slug: settings.slug || '' },
+    settings: { restaurant: settings.name || 'Seu Restaurante', city: settings.city || '', logoUrl: settings.logoUrl || '', serviceFee: Number(settings.serviceFee ?? 10), slug: settings.slug || '' },
     financeSession: finance.session
   };
 }
@@ -101,7 +101,7 @@ export function AppProvider({ children }) {
   async function toggleCommandCard(id, active) { await api(`/command-cards/${id}`, { method: 'PATCH', body: { active } }); await refresh(); notify(active ? 'Comanda ativada.' : 'Comanda desativada.'); }
   async function cashAction(action, body) { const result = await api(`/finance/${action}`, { method: 'POST', body }); await refresh(); notify('Caixa atualizado.'); return result; }
   async function payReceivable(tabId, method) { const result = await api(`/finance/receivables/${tabId}/pay`, { method: 'POST', body: { method } }); await refresh(); notify('Pagamento confirmado e mesa liberada.'); return result; }
-  async function saveSettings(values) { const settings = await api('/settings', { method: 'PUT', body: { name: values.restaurant, city: values.city, serviceFee: Number(values.serviceFee) } }); setData(current => ({ ...current, settings: { restaurant: settings.name, city: settings.city || '', serviceFee: Number(settings.serviceFee), slug: settings.slug } })); notify('Configurações salvas no banco.'); }
+  async function saveSettings(values) { const settings = await api('/settings', { method: 'PUT', body: { name: values.restaurant, city: values.city, logoUrl: values.logoUrl || null, serviceFee: Number(values.serviceFee) } }); setData(current => ({ ...current, settings: { restaurant: settings.name, city: settings.city || '', logoUrl: settings.logoUrl || '', serviceFee: Number(settings.serviceFee), slug: settings.slug } })); notify('Configurações salvas no banco.'); }
   async function resolveCall(id) { await api(`/service-calls/${id}/resolve`, { method: 'PATCH' }); await refresh(); notify('Chamado atendido.'); }
   async function saveEmployee(id, values) { await api(id ? `/users/${id}` : '/users', { method: id ? 'PATCH' : 'POST', body: values }); await refresh(); notify(id ? 'Colaborador atualizado.' : 'Colaborador criado.'); }
 
