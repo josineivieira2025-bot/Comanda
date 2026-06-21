@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Plus, CheckCircle2 } from 'lucide-react';
+import { Plus, CheckCircle2, XCircle } from 'lucide-react';
 import { useSearchParams } from 'react-router-dom';
 import PageHeader from '../components/PageHeader';
 import Modal from '../components/Modal';
@@ -24,7 +24,7 @@ export default function Orders() {
         <td><b>Comanda #{String(order.commandCardNumber || '').padStart(3, '0')}</b><small>Mesa {table?.number || '—'} · {client?.name || 'Não identificado'}</small></td>
         <td>{order.items.map(item => <span className="item-line" key={item.id}>{item.qty}× {data.products.find(product => product.id === item.productId)?.name}</span>)}</td>
         <td><b>{money(orderTotal(order))}</b></td><td><StatusBadge status={order.status} /></td>
-        <td><div className="row-actions">{can('orders.edit') && order.status === 'ready' ? <button className="action-green" onClick={() => updateOrder(order.id, 'delivered')}><CheckCircle2 /> Marcar como entregue</button> : <span>—</span>}</div></td>
+        <td><div className="row-actions">{can('orders.edit') && order.status === 'ready' && <button className="action-green" onClick={() => updateOrder(order.id, 'delivered')}><CheckCircle2 /> Marcar como entregue</button>}{can('orders.edit') && !['cancelled', 'delivered'].includes(order.status) && <button className="action-danger" onClick={() => updateOrder(order.id, 'cancelled')}><XCircle /> Cancelar</button>}{(!can('orders.edit') || ['cancelled', 'delivered'].includes(order.status)) && <span>—</span>}</div></td>
       </tr>;
     })}</tbody></table></div></section>
     <Modal open={open && can('orders.edit')} onClose={closeModal} title="Novo pedido" subtitle="LANÇAMENTO" wide><OrderForm onDone={closeModal} /></Modal>
