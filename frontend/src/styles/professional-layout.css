@@ -217,7 +217,7 @@ body { background: #f6f7f6; }
 /* Financeiro */
 .receivables-grid { display: grid; grid-template-columns: 1fr; gap: 0; padding: 0; }
 .receivable-card {
-  grid-template-columns: 70px 1fr 180px 185px;
+  grid-template-columns: 70px 1fr 150px auto;
   gap: 18px;
   padding: 15px 22px;
   border: 0;
@@ -228,6 +228,7 @@ body { background: #f6f7f6; }
 .receivable-card:last-child { border-bottom: 0; }
 .receivable-table { width: 46px; height: 46px; border-radius: 3px; }
 .receivable-card > .primary { grid-column: auto; width: auto; }
+.receivable-actions { justify-content: flex-end; }
 .cash-status { margin: 0; padding: 17px 22px; border: 0; border-top: 1px solid #dfe5e2; border-radius: 0; }
 .cash-status-icon { border-radius: 3px; }
 
@@ -310,6 +311,7 @@ body { background: #f6f7f6; }
   .kds-actions { grid-column: 1 / -1; border: 0; border-top: 1px solid #e5e9e7; }
   .receivable-card { grid-template-columns: 60px 1fr 160px; }
   .receivable-card > .primary { grid-column: 1 / -1; }
+  .receivable-actions { grid-column: 1 / -1; }
 }
 
 @media (max-width: 700px) {

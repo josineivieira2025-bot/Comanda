@@ -18,13 +18,14 @@ router.get('/summary', financeView, asyncHandler(async (req, res) => {
     prisma.cashSession.findFirst({ where: { restaurantId: req.user.restaurantId, status: 'OPEN' } }),
     prisma.payment.findMany({ where: { restaurantId: req.user.restaurantId, createdAt: { gte: start } }, orderBy: { createdAt: 'desc' } }),
     prisma.restaurant.findUnique({ where: { id: req.user.restaurantId }, select: { serviceFee: true } }),
-    prisma.tab.findMany({ where: { restaurantId: req.user.restaurantId, status: 'OPEN' }, include: { table: { select: { id: true, number: true } }, customer: { select: { id: true, name: true } }, orders: { where: { status: { not: 'CANCELLED' } }, include: { items: true } } }, orderBy: { openedAt: 'asc' } })
+    prisma.tab.findMany({ where: { restaurantId: req.user.restaurantId, status: 'OPEN' }, include: { table: { select: { id: true, number: true } }, customer: { select: { id: true, name: true } }, orders: { where: { status: { not: 'CANCELLED' } }, include: { items: { include: { product: { select: { id: true, name: true } } } } } } }, orderBy: { openedAt: 'asc' } })
   ]);
   const feePercent = Number(restaurant?.serviceFee ?? 10);
   const receivables = openTabs.filter(tab => tab.orders.length > 0 && tab.orders.every(order => order.status === 'DELIVERED')).map(tab => {
     const subtotal = tab.orders.flatMap(order => order.items).reduce((sum, item) => sum + Number(item.unitPrice) * item.quantity, 0);
     const serviceFee = subtotal * feePercent / 100;
-    return { id: tab.id, number: tab.number, table: tab.table, customer: tab.customer, openedAt: tab.openedAt, subtotal, serviceFee, total: subtotal + serviceFee, orderCount: tab.orders.length };
+    const items = tab.orders.flatMap(order => order.items.map(item => ({ id: item.id, productId: item.productId, name: item.product.name, quantity: item.quantity, unitPrice: Number(item.unitPrice), total: Number(item.unitPrice) * item.quantity })));
+    return { id: tab.id, number: tab.number, table: tab.table, customer: tab.customer, openedAt: tab.openedAt, subtotal, serviceFee, total: subtotal + serviceFee, orderCount: tab.orders.length, items };
   });
   const total = payments.reduce((sum, payment) => sum + (payment.type === 'WITHDRAWAL' ? -1 : 1) * Number(payment.amount), 0);
   res.json({ session, payments, receivables, total, byMethod: Object.fromEntries(methods.map(method => [method, payments.filter(payment => payment.method === method && payment.type === 'SALE').reduce((sum, payment) => sum + Number(payment.amount), 0)])) });

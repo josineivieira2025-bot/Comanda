@@ -30,7 +30,7 @@ function normalize({ tables = [], commandCards = [], orders = [], products = [],
     inventory: stock.map(item => ({ id: item.id, name: item.name, category: item.category, unit: item.unit, quantity: Number(item.quantity), min: Number(item.minimumStock) })),
     employees: users,
     transactions: (finance.payments || []).map(payment => ({ id: payment.id, type: lower(payment.type) === 'withdrawal' ? 'withdrawal' : lower(payment.type) === 'supply' ? 'supply' : 'sale', description: payment.description || payment.type, amount: (payment.type === 'WITHDRAWAL' ? -1 : 1) * Number(payment.amount), payment: lower(payment.method), createdAt: payment.createdAt })),
-    receivables: (finance.receivables || []).map(tab => ({ ...tab, subtotal: Number(tab.subtotal), serviceFee: Number(tab.serviceFee), total: Number(tab.total) })),
+    receivables: (finance.receivables || []).map(tab => ({ ...tab, subtotal: Number(tab.subtotal), serviceFee: Number(tab.serviceFee), total: Number(tab.total), items: (tab.items || []).map(item => ({ ...item, unitPrice: Number(item.unitPrice), total: Number(item.total) })) })),
     settings: { restaurant: settings.name || 'Seu Restaurante', city: settings.city || '', serviceFee: Number(settings.serviceFee ?? 10), slug: settings.slug || '' },
     financeSession: finance.session
   };
