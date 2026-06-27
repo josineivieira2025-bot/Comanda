@@ -66,6 +66,38 @@ enum CashSessionStatus {
   CLOSED
 }
 
+enum FiscalEnvironment {
+  HOMOLOGATION
+  PRODUCTION
+}
+
+enum FiscalDocumentStatus {
+  NEEDS_CONFIGURATION
+  PENDING
+  AUTHORIZED
+  REJECTED
+  CANCELLED
+}
+
+enum IntegrationProvider {
+  IFOOD
+}
+
+enum IntegrationStatus {
+  DISABLED
+  CONFIGURED
+  CONNECTED
+  ERROR
+}
+
+enum DeliveryStatus {
+  WAITING
+  ASSIGNED
+  PICKED_UP
+  DELIVERED
+  CANCELLED
+}
+
 model Restaurant {
   id String @id @default(cuid())
   name String
@@ -85,6 +117,11 @@ model Restaurant {
   cashSessions CashSession[]
   payments Payment[]
   commandCards CommandCard[]
+  fiscalSettings FiscalSettings?
+  integrations IntegrationSetting[]
+  fiscalDocuments FiscalDocument[]
+  couriers Courier[]
+  deliveryOrders DeliveryOrder[]
   @@map("restaurants")
 }
 
@@ -176,6 +213,7 @@ model Tab {
   closedAt DateTime? @map("closed_at")
   orders Order[]
   payments Payment[]
+  fiscalDocuments FiscalDocument[]
   @@index([restaurantId,status])
   @@map("tabs")
 }
@@ -225,6 +263,7 @@ model Order {
   readyAt DateTime? @map("ready_at")
   deliveredAt DateTime? @map("delivered_at")
   items OrderItem[]
+  deliveries DeliveryOrder[]
   @@index([status,createdAt])
   @@index([deliveryTableId])
   @@map("orders")
@@ -304,8 +343,135 @@ model Payment {
   amount Decimal @db.Decimal(12,2)
   description String?
   createdAt DateTime @default(now()) @map("created_at")
+  fiscalDocument FiscalDocument?
   @@index([restaurantId,createdAt])
   @@map("payments")
+}
+
+model FiscalSettings {
+  id String @id @default(cuid())
+  restaurantId String @unique @map("restaurant_id")
+  restaurant Restaurant @relation(fields:[restaurantId], references:[id], onDelete:Cascade)
+  enabled Boolean @default(false)
+  autoIssueCupom Boolean @default(true) @map("auto_issue_cupom")
+  environment FiscalEnvironment @default(HOMOLOGATION)
+  provider String @default("manual")
+  providerToken String? @map("provider_token")
+  certificateName String? @map("certificate_name")
+  certificateExpiresAt DateTime? @map("certificate_expires_at")
+  cnpj String?
+  legalName String? @map("legal_name")
+  tradeName String? @map("trade_name")
+  stateRegistration String? @map("state_registration")
+  municipalRegistration String? @map("municipal_registration")
+  taxRegime String? @map("tax_regime")
+  cep String?
+  street String?
+  number String?
+  neighborhood String?
+  city String?
+  state String?
+  nfceSeries Int @default(1) @map("nfce_series")
+  nfceNextNumber Int @default(1) @map("nfce_next_number")
+  nfeSeries Int @default(1) @map("nfe_series")
+  nfeNextNumber Int @default(1) @map("nfe_next_number")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+  @@map("fiscal_settings")
+}
+
+model IntegrationSetting {
+  id String @id @default(cuid())
+  restaurantId String @map("restaurant_id")
+  restaurant Restaurant @relation(fields:[restaurantId], references:[id], onDelete:Cascade)
+  provider IntegrationProvider
+  enabled Boolean @default(false)
+  status IntegrationStatus @default(DISABLED)
+  storeId String? @map("store_id")
+  merchantId String? @map("merchant_id")
+  accessToken String? @map("access_token")
+  refreshToken String? @map("refresh_token")
+  webhookSecret String? @map("webhook_secret")
+  lastSyncAt DateTime? @map("last_sync_at")
+  lastError String? @map("last_error")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+  @@unique([restaurantId,provider])
+  @@map("integration_settings")
+}
+
+model Courier {
+  id String @id @default(cuid())
+  restaurantId String @map("restaurant_id")
+  restaurant Restaurant @relation(fields:[restaurantId], references:[id], onDelete:Cascade)
+  name String
+  phone String
+  vehicle String?
+  plate String?
+  active Boolean @default(true)
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+  deliveries DeliveryOrder[]
+  @@index([restaurantId,active])
+  @@map("couriers")
+}
+
+model DeliveryOrder {
+  id String @id @default(cuid())
+  restaurantId String @map("restaurant_id")
+  restaurant Restaurant @relation(fields:[restaurantId], references:[id], onDelete:Cascade)
+  orderId String? @map("order_id")
+  order Order? @relation(fields:[orderId], references:[id], onDelete:SetNull)
+  courierId String? @map("courier_id")
+  courier Courier? @relation(fields:[courierId], references:[id], onDelete:SetNull)
+  externalProvider IntegrationProvider? @map("external_provider")
+  externalId String? @map("external_id")
+  customerName String @map("customer_name")
+  customerPhone String? @map("customer_phone")
+  address String
+  neighborhood String?
+  city String?
+  state String?
+  amount Decimal @default(0) @db.Decimal(12,2)
+  deliveryFee Decimal @default(0) @map("delivery_fee") @db.Decimal(12,2)
+  status DeliveryStatus @default(WAITING)
+  notes String?
+  createdAt DateTime @default(now()) @map("created_at")
+  assignedAt DateTime? @map("assigned_at")
+  pickedUpAt DateTime? @map("picked_up_at")
+  deliveredAt DateTime? @map("delivered_at")
+  cancelledAt DateTime? @map("cancelled_at")
+  @@index([restaurantId,status])
+  @@unique([restaurantId,externalProvider,externalId])
+  @@map("delivery_orders")
+}
+
+model FiscalDocument {
+  id String @id @default(cuid())
+  restaurantId String @map("restaurant_id")
+  restaurant Restaurant @relation(fields:[restaurantId], references:[id], onDelete:Cascade)
+  paymentId String? @unique @map("payment_id")
+  payment Payment? @relation(fields:[paymentId], references:[id], onDelete:SetNull)
+  tabId String? @map("tab_id")
+  tab Tab? @relation(fields:[tabId], references:[id], onDelete:SetNull)
+  type String @default("NFC_E")
+  status FiscalDocumentStatus @default(NEEDS_CONFIGURATION)
+  environment FiscalEnvironment @default(HOMOLOGATION)
+  series Int?
+  number Int?
+  accessKey String? @map("access_key")
+  protocol String?
+  xmlUrl String? @map("xml_url")
+  danfeUrl String? @map("danfe_url")
+  errorMessage String? @map("error_message")
+  amount Decimal @db.Decimal(12,2)
+  customerCpf String? @map("customer_cpf")
+  issuedAt DateTime? @map("issued_at")
+  cancelledAt DateTime? @map("cancelled_at")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+  @@index([restaurantId,status,createdAt])
+  @@map("fiscal_documents")
 }
 
 model ServiceCall {

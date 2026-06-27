@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { prisma } from '../lib/prisma.js';
 import { asyncHandler, HttpError } from '../lib/http.js';
 import { auth, permit } from '../middleware/auth.js';
+import { createFiscalDocumentForPayment } from '../lib/fiscal.js';
 
 const router = Router();
 router.use(auth);
@@ -33,7 +34,7 @@ router.get('/summary', financeView, asyncHandler(async (req, res) => {
 
 router.post('/receivables/:tabId/pay', financeEdit, asyncHandler(async (req, res) => {
   const body = z.object({ method: z.enum(['CASH', 'PIX', 'CARD', 'VOUCHER']) }).parse(req.body);
-  const tab = await prisma.tab.findFirst({ where: { id: req.params.tabId, restaurantId: req.user.restaurantId, status: 'OPEN' }, include: { orders: { where: { status: { not: 'CANCELLED' } }, include: { items: true } }, table: true } });
+  const tab = await prisma.tab.findFirst({ where: { id: req.params.tabId, restaurantId: req.user.restaurantId, status: 'OPEN' }, include: { orders: { where: { status: { not: 'CANCELLED' } }, include: { items: true } }, table: true, customer: true } });
   if (!tab) throw new HttpError(404, 'Comanda pendente não encontrada');
   if (!tab.orders.length || !tab.orders.every(order => order.status === 'DELIVERED')) throw new HttpError(409, 'Todos os pedidos precisam estar entregues antes do pagamento');
   const session = await prisma.cashSession.findFirst({ where: { restaurantId: req.user.restaurantId, status: 'OPEN' } });
@@ -46,6 +47,7 @@ router.post('/receivables/:tabId/pay', financeEdit, asyncHandler(async (req, res
     const closed = await tx.tab.updateMany({ where: { id: tab.id, status: 'OPEN' }, data: { status: 'CLOSED', subtotal, serviceFee, total, closedAt: new Date() } });
     if (closed.count !== 1) throw new HttpError(409, 'Esta comanda já foi recebida');
     const payment = await tx.payment.create({ data: { restaurantId: req.user.restaurantId, tabId: tab.id, cashSessionId: session.id, userId: req.user.id, type: 'SALE', method: body.method, amount: total, description: `Comanda #${tab.number} · Mesa ${tab.table.number}` } });
+    await createFiscalDocumentForPayment(tx, { restaurantId: req.user.restaurantId, payment, tabId: tab.id, amount: total, customerCpf: tab.customer?.cpf || null });
     const remainingTabs = await tx.tab.count({ where: { tableId: tab.tableId, status: 'OPEN' } });
     await tx.restaurantTable.update({ where: { id: tab.tableId }, data: { status: remainingTabs ? 'OCCUPIED' : 'AVAILABLE' } });
     if (!remainingTabs) await tx.serviceCall.updateMany({ where: { tableId: tab.tableId, status: 'OPEN' }, data: { status: 'RESOLVED', resolvedAt: new Date() } });

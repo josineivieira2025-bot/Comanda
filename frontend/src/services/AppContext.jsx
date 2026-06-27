@@ -6,11 +6,11 @@ import { can, canAny } from './permissions';
 const Context = createContext(null);
 export const money = value => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(Number(value) || 0);
 export const orderNumber = value => String(Number(value) || 0).padStart(7, '0');
-const empty = { tables: [], commandCards: [], customers: [], products: [], categories: [], orders: [], inventory: [], employees: [], transactions: [], receivables: [], settings: { restaurant: 'Seu Restaurante', city: '', logoUrl: '', serviceFee: 10, slug: '' } };
+const empty = { tables: [], commandCards: [], customers: [], products: [], categories: [], orders: [], inventory: [], employees: [], transactions: [], receivables: [], integrations: { fiscalSettings: null, fiscalReadiness: null, ifood: null, couriers: [], deliveries: [], fiscalDocuments: [] }, settings: { restaurant: 'Seu Restaurante', city: '', logoUrl: '', serviceFee: 10, slug: '' } };
 const lower = value => String(value || '').toLowerCase();
 const sectors = { KITCHEN: 'cozinha', BAR: 'bar', GRILL: 'churrasqueira', DESSERT: 'sobremesa' };
 
-function normalize({ tables = [], commandCards = [], orders = [], products = [], categories = [], stock = [], customers = [], users = [], finance = {}, settings = {} }) {
+function normalize({ tables = [], commandCards = [], orders = [], products = [], categories = [], stock = [], customers = [], users = [], finance = {}, settings = {}, integrations = empty.integrations }) {
   const dailyCounters = new Map();
   const dailyNumbers = new Map();
   [...orders].sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt)).forEach(order => {
@@ -31,6 +31,7 @@ function normalize({ tables = [], commandCards = [], orders = [], products = [],
     employees: users,
     transactions: (finance.payments || []).map(payment => ({ id: payment.id, type: lower(payment.type) === 'withdrawal' ? 'withdrawal' : lower(payment.type) === 'supply' ? 'supply' : 'sale', description: payment.description || payment.type, amount: (payment.type === 'WITHDRAWAL' ? -1 : 1) * Number(payment.amount), payment: lower(payment.method), createdAt: payment.createdAt })),
     receivables: (finance.receivables || []).map(tab => ({ ...tab, subtotal: Number(tab.subtotal), serviceFee: Number(tab.serviceFee), total: Number(tab.total), items: (tab.items || []).map(item => ({ ...item, unitPrice: Number(item.unitPrice), total: Number(item.total) })) })),
+    integrations: { fiscalSettings: integrations.fiscalSettings, fiscalReadiness: integrations.fiscalReadiness, ifood: integrations.ifood, couriers: integrations.couriers || [], deliveries: integrations.deliveries || [], fiscalDocuments: integrations.fiscalDocuments || [] },
     settings: { restaurant: settings.name || 'Seu Restaurante', city: settings.city || '', logoUrl: settings.logoUrl || '', serviceFee: Number(settings.serviceFee ?? 10), slug: settings.slug || '' },
     financeSession: finance.session
   };
@@ -52,7 +53,7 @@ export function AppProvider({ children }) {
     const currentUser = userOverride || currentUserRef.current;
     const load = (allowed, path, fallback) => allowed ? api(path) : Promise.resolve(fallback);
     refreshPromise.current = (async () => {
-      const [tables, commandCards, orders, products, categories, stock, customers, users, finance, settings] = await Promise.all([
+      const [tables, commandCards, orders, products, categories, stock, customers, users, finance, settings, integrations] = await Promise.all([
         load(canAny(currentUser, 'tables.view', 'dashboard.view', 'orders.view', 'orders.edit'), '/tables', []),
         load(canAny(currentUser, 'tables.view', 'orders.edit'), '/command-cards', []),
         load(canAny(currentUser, 'orders.view', 'kds.view', 'dashboard.view', 'tables.view', 'customers.view', 'reports.view'), '/orders', []),
@@ -62,9 +63,10 @@ export function AppProvider({ children }) {
         load(canAny(currentUser, 'customers.view', 'orders.edit', 'reports.view'), '/customers', []),
         load(currentUser?.role === 'ADMIN', '/users', []),
         load(canAny(currentUser, 'finance.view', 'dashboard.view'), '/finance/summary', {}),
-        api('/settings')
+        api('/settings'),
+        load(canAny(currentUser, 'settings.view', 'finance.view'), '/integrations', empty.integrations)
       ]);
-      setData(normalize({ tables, commandCards, orders, products, categories, stock, customers, users, finance, settings }));
+      setData(normalize({ tables, commandCards, orders, products, categories, stock, customers, users, finance, settings, integrations }));
     })().finally(() => { refreshPromise.current = null; });
     return refreshPromise.current;
   }, []);
@@ -102,6 +104,11 @@ export function AppProvider({ children }) {
   async function cashAction(action, body) { const result = await api(`/finance/${action}`, { method: 'POST', body }); await refresh(); notify('Caixa atualizado.'); return result; }
   async function payReceivable(tabId, method) { const result = await api(`/finance/receivables/${tabId}/pay`, { method: 'POST', body: { method } }); await refresh(); notify('Pagamento confirmado e mesa liberada.'); return result; }
   async function saveSettings(values) { const settings = await api('/settings', { method: 'PUT', body: { name: values.restaurant, city: values.city, logoUrl: values.logoUrl || null, serviceFee: Number(values.serviceFee) } }); setData(current => ({ ...current, settings: { restaurant: settings.name, city: settings.city || '', logoUrl: settings.logoUrl || '', serviceFee: Number(settings.serviceFee), slug: settings.slug } })); notify('Configurações salvas no banco.'); }
+  async function saveFiscalSettings(values) { await api('/integrations/fiscal-settings', { method: 'PUT', body: values }); await refresh(); notify('Configuração fiscal salva.'); }
+  async function saveIfoodIntegration(values) { await api('/integrations/ifood', { method: 'PUT', body: values }); await refresh(); notify('Integração iFood salva.'); }
+  async function testIfoodIntegration() { await api('/integrations/ifood/test', { method: 'POST' }); await refresh(); notify('Credenciais iFood marcadas como conectadas.'); }
+  async function saveCourier(id, values) { await api(id ? `/integrations/couriers/${id}` : '/integrations/couriers', { method: id ? 'PATCH' : 'POST', body: values }); await refresh(); notify(id ? 'Entregador atualizado.' : 'Entregador cadastrado.'); }
+  async function issueFiscalDocument(id) { await api(`/integrations/fiscal-documents/${id}/issue`, { method: 'POST' }); await refresh(); notify('Cupom enviado para a fila fiscal.'); }
   async function resolveCall(id) { await api(`/service-calls/${id}/resolve`, { method: 'PATCH' }); await refresh(); notify('Chamado atendido.'); }
   async function saveEmployee(id, values) { await api(id ? `/users/${id}` : '/users', { method: id ? 'PATCH' : 'POST', body: values }); await refresh(); notify(id ? 'Colaborador atualizado.' : 'Colaborador criado.'); }
 
@@ -113,7 +120,7 @@ export function AppProvider({ children }) {
       .filter(order => activeTabIds.includes(order.tabId) && order.status !== 'cancelled')
       .reduce((sum, order) => sum + orderTotal(order), 0);
   };
-  const value = useMemo(() => ({ data, setData, user, ready, login, register, logout, refresh, reset: refresh, toast, notify, mutate, remove, createOrder, updateOrder, moveStock, openTable, createTab, createCommandCards, toggleCommandCard, cashAction, payReceivable, saveSettings, resolveCall, saveEmployee, can: permission => can(user, permission), orderTotal, tableTotal }), [data, user, ready, toast, notify, refresh]);
+  const value = useMemo(() => ({ data, setData, user, ready, login, register, logout, refresh, reset: refresh, toast, notify, mutate, remove, createOrder, updateOrder, moveStock, openTable, createTab, createCommandCards, toggleCommandCard, cashAction, payReceivable, saveSettings, saveFiscalSettings, saveIfoodIntegration, testIfoodIntegration, saveCourier, issueFiscalDocument, resolveCall, saveEmployee, can: permission => can(user, permission), orderTotal, tableTotal }), [data, user, ready, toast, notify, refresh]);
   return <Context.Provider value={value}>{children}<div className="global-request-indicator">Processando sua ação</div>{toast && <div className="toast">✓ {toast}</div>}</Context.Provider>;
 }
 

@@ -13,6 +13,7 @@ import settingsRoutes from './routes/settings.js';
 import serviceCallRoutes from './routes/serviceCalls.js';
 import publicRoutes from './routes/public.js';
 import commandCardRoutes from './routes/commandCards.js';
+import integrationsRoutes from './routes/integrations.js';
 import { auth, moduleAccess } from './middleware/auth.js';
 
 export function createApp() {
@@ -29,6 +30,7 @@ export function createApp() {
   app.use('/api/customers', auth, moduleAccess(['customers.view', 'orders.edit', 'reports.view'], 'customers.edit'), customerRoutes);
   app.use('/api/finance', financeRoutes);
   app.use('/api/settings', settingsRoutes);
+  app.use('/api/integrations', integrationsRoutes);
   app.use('/api/service-calls', serviceCallRoutes);
   app.use('/api/public', publicRoutes);
   app.use('/api/command-cards', commandCardRoutes);

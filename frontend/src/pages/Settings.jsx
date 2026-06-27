@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Save, ExternalLink, Copy, Check, UserPlus, Pencil, ShieldCheck, Power, ImagePlus, Trash2 } from 'lucide-react';
+import { Save, ExternalLink, Copy, Check, UserPlus, Pencil, ShieldCheck, Power, ImagePlus, Trash2, ReceiptText, Plug, Truck, RefreshCw } from 'lucide-react';
 import PageHeader from '../components/PageHeader';
 import Modal from '../components/Modal';
 import { useApp } from '../services/AppContext';
@@ -8,14 +8,57 @@ import { permissionModules, permissionPresets } from '../services/permissions';
 const blankEmployee = { name: '', email: '', password: '', role: 'WAITER', permissions: permissionPresets.WAITER, active: true };
 const roleLabels = { ADMIN: 'Administrador', MANAGER: 'Gerente', WAITER: 'Garçom', KITCHEN: 'Cozinha', CASHIER: 'Caixa' };
 
+const blankCourier = { name: '', phone: '', vehicle: '', plate: '', active: true };
+const statusLabels = { NEEDS_CONFIGURATION: 'Configurar', PENDING: 'Pendente', AUTHORIZED: 'Autorizado', REJECTED: 'Rejeitado', CANCELLED: 'Cancelado', DISABLED: 'Desativado', CONFIGURED: 'Configurado', CONNECTED: 'Conectado', ERROR: 'Erro' };
+
+function blankFiscal(current = {}, settings = {}) {
+  return {
+    enabled: !!current?.enabled,
+    autoIssueCupom: current?.autoIssueCupom ?? true,
+    environment: current?.environment || 'HOMOLOGATION',
+    provider: current?.provider || 'manual',
+    providerToken: '',
+    certificateName: current?.certificateName || '',
+    certificateExpiresAt: current?.certificateExpiresAt ? current.certificateExpiresAt.slice(0, 10) : '',
+    cnpj: current?.cnpj || '',
+    legalName: current?.legalName || '',
+    tradeName: current?.tradeName || settings.restaurant || '',
+    stateRegistration: current?.stateRegistration || '',
+    municipalRegistration: current?.municipalRegistration || '',
+    taxRegime: current?.taxRegime || 'Simples Nacional',
+    cep: current?.cep || '',
+    street: current?.street || '',
+    number: current?.number || '',
+    neighborhood: current?.neighborhood || '',
+    city: current?.city || settings.city || '',
+    state: current?.state || '',
+    nfceSeries: current?.nfceSeries || 1,
+    nfceNextNumber: current?.nfceNextNumber || 1,
+    nfeSeries: current?.nfeSeries || 1,
+    nfeNextNumber: current?.nfeNextNumber || 1
+  };
+}
+
+function blankIfood(current = {}) {
+  return { enabled: !!current?.enabled, storeId: current?.storeId || '', merchantId: current?.merchantId || '', accessToken: '', refreshToken: '', webhookSecret: '' };
+}
+
 export default function Settings() {
-  const { data, user, saveSettings, saveEmployee, notify, can } = useApp();
+  const { data, user, saveSettings, saveEmployee, saveFiscalSettings, saveIfoodIntegration, testIfoodIntegration, saveCourier, issueFiscalDocument, notify, can } = useApp();
   const [form, setForm] = useState(data.settings);
+  const [fiscal, setFiscal] = useState(blankFiscal());
+  const [ifood, setIfood] = useState(blankIfood());
+  const [courier, setCourier] = useState(blankCourier);
   const [copied, setCopied] = useState('');
   const [employeeModal, setEmployeeModal] = useState(false);
   const [employee, setEmployee] = useState(blankEmployee);
   useEffect(() => setForm(data.settings), [data.settings]);
+  useEffect(() => setFiscal(blankFiscal(data.integrations.fiscalSettings, data.settings)), [data.integrations.fiscalSettings, data.settings]);
+  useEffect(() => setIfood(blankIfood(data.integrations.ifood)), [data.integrations.ifood]);
   async function save(event) { event.preventDefault(); await saveSettings(form); }
+  async function submitFiscal(event) { event.preventDefault(); await saveFiscalSettings({ ...fiscal, certificateExpiresAt: fiscal.certificateExpiresAt || null, nfceSeries: Number(fiscal.nfceSeries), nfceNextNumber: Number(fiscal.nfceNextNumber), nfeSeries: Number(fiscal.nfeSeries), nfeNextNumber: Number(fiscal.nfeNextNumber) }); }
+  async function submitIfood(event) { event.preventDefault(); await saveIfoodIntegration(ifood); }
+  async function submitCourier(event) { event.preventDefault(); await saveCourier(courier.id, courier); setCourier(blankCourier); }
   async function chooseLogo(event) {
     const file = event.target.files?.[0];
     event.target.value = '';
@@ -81,6 +124,34 @@ export default function Settings() {
         <LinkRow label="Cardápio público" value={publicMenu} copied={copied} onCopy={copy} />
         <LinkRow label="Aplicativo do garçom" value={`${window.location.origin}/#/garcom`} copied={copied} onCopy={copy} />
         {data.tables.slice(0, 4).map(table => <LinkRow key={table.id} label={`Portal da mesa ${table.number}`} value={`${window.location.origin}/#/mesa/${table.id}`} copied={copied} onCopy={copy} />)}
+      </section>
+
+      <form className="panel integration-panel" onSubmit={submitFiscal}>
+        <div className="panel-head"><div><h2><ReceiptText /> Nota fiscal e cupom</h2><p>NFC-e/NF-e com dados fiscais da empresa</p></div><span className={`status-badge status-${data.integrations.fiscalReadiness?.ready ? 'ready' : 'attention'}`}>{data.integrations.fiscalReadiness?.ready ? 'Pronto' : 'Configurar'}</span></div>
+        <div className="integration-body">
+          <div className="toggle-row"><label className="check-field"><input type="checkbox" checked={fiscal.enabled} onChange={event => setFiscal({ ...fiscal, enabled: event.target.checked })} /><span /></label><b>Ativar emissão fiscal</b><label className="check-field"><input type="checkbox" checked={fiscal.autoIssueCupom} onChange={event => setFiscal({ ...fiscal, autoIssueCupom: event.target.checked })} /><span /></label><b>Gerar cupom ao receber</b></div>
+          <div className="form-grid"><label>CNPJ<input value={fiscal.cnpj} onChange={event => setFiscal({ ...fiscal, cnpj: event.target.value })} /></label><label>Razão social<input value={fiscal.legalName} onChange={event => setFiscal({ ...fiscal, legalName: event.target.value })} /></label><label>Nome fantasia<input value={fiscal.tradeName} onChange={event => setFiscal({ ...fiscal, tradeName: event.target.value })} /></label><label>Regime tributário<input value={fiscal.taxRegime} onChange={event => setFiscal({ ...fiscal, taxRegime: event.target.value })} /></label><label>CEP<input value={fiscal.cep} onChange={event => setFiscal({ ...fiscal, cep: event.target.value })} /></label><label>Rua<input value={fiscal.street} onChange={event => setFiscal({ ...fiscal, street: event.target.value })} /></label><label>Número<input value={fiscal.number} onChange={event => setFiscal({ ...fiscal, number: event.target.value })} /></label><label>Bairro<input value={fiscal.neighborhood} onChange={event => setFiscal({ ...fiscal, neighborhood: event.target.value })} /></label><label>Cidade<input value={fiscal.city} onChange={event => setFiscal({ ...fiscal, city: event.target.value })} /></label><label>UF<input maxLength="2" value={fiscal.state} onChange={event => setFiscal({ ...fiscal, state: event.target.value.toUpperCase() })} /></label><label>Ambiente<select value={fiscal.environment} onChange={event => setFiscal({ ...fiscal, environment: event.target.value })}><option value="HOMOLOGATION">Homologação</option><option value="PRODUCTION">Produção</option></select></label><label>Provedor fiscal<input value={fiscal.provider} onChange={event => setFiscal({ ...fiscal, provider: event.target.value })} /></label><label>Token do provedor<input type="password" placeholder="Mantém o token salvo se vazio" value={fiscal.providerToken} onChange={event => setFiscal({ ...fiscal, providerToken: event.target.value })} /></label><label>Certificado<input value={fiscal.certificateName} onChange={event => setFiscal({ ...fiscal, certificateName: event.target.value })} /></label><label>Série NFC-e<input type="number" min="1" value={fiscal.nfceSeries} onChange={event => setFiscal({ ...fiscal, nfceSeries: event.target.value })} /></label><label>Próximo número<input type="number" min="1" value={fiscal.nfceNextNumber} onChange={event => setFiscal({ ...fiscal, nfceNextNumber: event.target.value })} /></label></div>
+          <small className="integration-note">{data.integrations.fiscalReadiness?.message || 'Preencha os dados fiscais para liberar a fila de emissão.'}</small>
+          {can('settings.edit') && <button className="primary"><Save /> Salvar fiscal</button>}
+        </div>
+      </form>
+
+      <form className="panel integration-panel" onSubmit={submitIfood}>
+        <div className="panel-head"><div><h2><Plug /> Integração iFood</h2><p>Credenciais oficiais, loja e sincronização</p></div><span className="status-badge">{statusLabels[data.integrations.ifood?.status] || 'Não configurado'}</span></div>
+        <div className="integration-body">
+          <div className="toggle-row"><label className="check-field"><input type="checkbox" checked={ifood.enabled} onChange={event => setIfood({ ...ifood, enabled: event.target.checked })} /><span /></label><b>Ativar iFood</b></div>
+          <div className="form-grid"><label>ID da loja<input value={ifood.storeId} onChange={event => setIfood({ ...ifood, storeId: event.target.value })} /></label><label>Merchant ID<input value={ifood.merchantId} onChange={event => setIfood({ ...ifood, merchantId: event.target.value })} /></label><label>Access token<input type="password" placeholder={data.integrations.ifood?.hasAccessToken ? 'Token salvo' : 'Token oficial'} value={ifood.accessToken} onChange={event => setIfood({ ...ifood, accessToken: event.target.value })} /></label><label>Refresh token<input type="password" placeholder={data.integrations.ifood?.hasRefreshToken ? 'Token salvo' : 'Refresh token'} value={ifood.refreshToken} onChange={event => setIfood({ ...ifood, refreshToken: event.target.value })} /></label><label>Webhook secret<input type="password" placeholder={data.integrations.ifood?.hasWebhookSecret ? 'Secret salvo' : 'Secret'} value={ifood.webhookSecret} onChange={event => setIfood({ ...ifood, webhookSecret: event.target.value })} /></label></div>
+          <div className="card-actions"><button className="primary"><Save /> Salvar iFood</button><button type="button" className="secondary" onClick={testIfoodIntegration}><RefreshCw /> Testar credenciais</button></div>
+        </div>
+      </form>
+
+      <section className="panel integration-panel">
+        <div className="panel-head"><div><h2><Truck /> Entregadores</h2><p>Equipe de entrega e documentos recentes</p></div></div>
+        <div className="integration-body">
+          <form className="form-grid courier-form" onSubmit={submitCourier}><label>Nome<input required value={courier.name} onChange={event => setCourier({ ...courier, name: event.target.value })} /></label><label>Telefone<input required value={courier.phone} onChange={event => setCourier({ ...courier, phone: event.target.value })} /></label><label>Veículo<input value={courier.vehicle} onChange={event => setCourier({ ...courier, vehicle: event.target.value })} /></label><label>Placa<input value={courier.plate} onChange={event => setCourier({ ...courier, plate: event.target.value })} /></label><button className="primary"><Save /> Salvar entregador</button></form>
+          <div className="table-responsive"><table><thead><tr><th>Entregador</th><th>Veículo</th><th>Status</th><th>Ações</th></tr></thead><tbody>{data.integrations.couriers.map(item => <tr key={item.id}><td><b>{item.name}</b><small>{item.phone}</small></td><td>{item.vehicle || '-'}<small>{item.plate || ''}</small></td><td><span className={`command-card-status ${item.active ? 'free' : 'inactive'}`}>{item.active ? 'Ativo' : 'Inativo'}</span></td><td><div className="row-actions"><button onClick={() => setCourier({ id: item.id, name: item.name, phone: item.phone, vehicle: item.vehicle || '', plate: item.plate || '', active: item.active })}><Pencil /> Editar</button><button onClick={() => saveCourier(item.id, { active: !item.active })}><Power /> {item.active ? 'Desativar' : 'Ativar'}</button></div></td></tr>)}</tbody></table></div>
+          <div className="table-responsive"><table><thead><tr><th>Cupom</th><th>Valor</th><th>Status</th><th>Ações</th></tr></thead><tbody>{data.integrations.fiscalDocuments.map(doc => <tr key={doc.id}><td><b>{doc.type} {doc.series ? `${doc.series}/${doc.number || '-'}` : ''}</b><small>{doc.tab?.table ? `Mesa ${doc.tab.table.number}` : 'Pagamento'}</small></td><td>{Number(doc.amount || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</td><td><span className="status-badge">{statusLabels[doc.status] || doc.status}</span><small>{doc.errorMessage || ''}</small></td><td>{['NEEDS_CONFIGURATION', 'PENDING'].includes(doc.status) && <button className="secondary" onClick={() => issueFiscalDocument(doc.id)}><ReceiptText /> Emitir</button>}</td></tr>)}</tbody></table></div>
+        </div>
       </section>
 
       {isAdmin && <section className="panel team-panel">
