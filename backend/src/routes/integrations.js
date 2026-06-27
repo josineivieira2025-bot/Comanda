@@ -142,7 +142,24 @@ router.get('/', permit('settings.view', 'finance.view'), asyncHandler(async (req
     prisma.integrationSetting.findUnique({ where: { restaurantId_provider: { restaurantId: req.user.restaurantId, provider: 'IFOOD' } } }),
     prisma.courier.findMany({ where: { restaurantId: req.user.restaurantId }, orderBy: [{ active: 'desc' }, { name: 'asc' }] }),
     prisma.deliveryOrder.findMany({ where: { restaurantId: req.user.restaurantId }, include: { courier: true, order: true }, orderBy: { createdAt: 'desc' }, take: 80 }),
-    prisma.fiscalDocument.findMany({ where: { restaurantId: req.user.restaurantId }, include: { payment: true, tab: { include: { table: true, customer: true } } }, orderBy: { createdAt: 'desc' }, take: 80 })
+    prisma.fiscalDocument.findMany({
+      where: { restaurantId: req.user.restaurantId },
+      include: {
+        payment: true,
+        tab: {
+          include: {
+            table: true,
+            customer: true,
+            orders: {
+              where: { status: { not: 'CANCELLED' } },
+              include: { items: { include: { product: { select: { id: true, name: true } } } } }
+            }
+          }
+        }
+      },
+      orderBy: { createdAt: 'desc' },
+      take: 80
+    })
   ]);
   res.json({ fiscalSettings, fiscalReadiness: fiscalReadiness(fiscalSettings), ifood: publicIntegration(ifood), couriers, deliveries, fiscalDocuments });
 }));

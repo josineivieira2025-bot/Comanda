@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react';
-import { Save, ExternalLink, Copy, Check, UserPlus, Pencil, ShieldCheck, Power, ImagePlus, Trash2, ReceiptText, Plug, Truck, RefreshCw } from 'lucide-react';
+import { Save, ExternalLink, Copy, Check, UserPlus, Pencil, ShieldCheck, Power, ImagePlus, Trash2, ReceiptText, Plug, Truck, RefreshCw, Printer } from 'lucide-react';
 import PageHeader from '../components/PageHeader';
 import Modal from '../components/Modal';
-import { useApp } from '../services/AppContext';
+import { money, useApp } from '../services/AppContext';
 import { permissionModules, permissionPresets } from '../services/permissions';
 
 const blankEmployee = { name: '', email: '', password: '', role: 'WAITER', permissions: permissionPresets.WAITER, active: true };
@@ -80,6 +80,45 @@ export default function Settings() {
   const publicMenu = `${window.location.origin}/#/cardapio/${data.settings.slug || ''}`.replace(/\/$/, '');
   const isAdmin = user?.role === 'ADMIN';
 
+  function printFiscalDocument(doc) {
+    const settings = data.integrations.fiscalSettings || {};
+    const rows = (doc.tab?.orders || []).flatMap(order => order.items || []);
+    const subtotal = rows.reduce((sum, item) => sum + Number(item.unitPrice || 0) * Number(item.quantity || 0), 0);
+    const serviceFee = Number(doc.tab?.serviceFee || 0);
+    const total = Number(doc.amount || doc.tab?.total || subtotal + serviceFee);
+    const method = { CASH: 'Dinheiro', PIX: 'PIX', CARD: 'Cartao', VOUCHER: 'Voucher' }[doc.payment?.method] || 'Pagamento';
+    const itemLines = rows.map(item => {
+      const lineTotal = Number(item.unitPrice || 0) * Number(item.quantity || 0);
+      return `<tr><td>${escapeHtml(item.quantity)}x ${escapeHtml(item.product?.name || 'Item')}</td><td>${money(item.unitPrice)}</td><td>${money(lineTotal)}</td></tr>`;
+    }).join('') || '<tr><td colspan="3">Itens nao carregados</td></tr>';
+    const fiscalInfo = doc.status === 'AUTHORIZED'
+      ? `<p><b>Autorizado:</b> ${escapeHtml(doc.protocol || '-')}</p><p><b>Chave:</b> ${escapeHtml(doc.accessKey || '-')}</p>`
+      : `<p><b>Status fiscal:</b> ${escapeHtml(statusLabels[doc.status] || doc.status)}</p><p>${escapeHtml(doc.errorMessage || 'Documento registrado no sistema.')}</p>`;
+    const printWindow = window.open('', '_blank', 'width=420,height=720');
+    if (!printWindow) return notify('Permita pop-ups para imprimir o cupom.');
+    printWindow.document.write(`<!doctype html><html><head><title>Cupom ${escapeHtml(doc.number || doc.id)}</title><style>
+      *{box-sizing:border-box}body{font-family:Arial,sans-serif;margin:0;padding:12px;color:#111;width:80mm}h1,h2,p{margin:0;text-align:center}h1{font-size:15px}h2{font-size:11px;font-weight:400;margin-top:4px}.line{border-top:1px dashed #111;margin:10px 0}.meta p,.fiscal p{text-align:left;font-size:10px;line-height:1.35}table{width:100%;border-collapse:collapse;font-size:10px}td,th{padding:3px 0;text-align:left;vertical-align:top}td:nth-child(2),td:nth-child(3),th:nth-child(2),th:nth-child(3){text-align:right}.totals p{display:flex;justify-content:space-between;font-size:11px;margin:3px 0}.totals strong{font-size:13px}.footer{font-size:9px;text-align:center;line-height:1.35}.no-print{margin-top:12px;width:100%;height:34px}@media print{.no-print{display:none}body{padding:0;width:auto}}
+    </style></head><body>
+      <h1>${escapeHtml(settings.tradeName || data.settings.restaurant)}</h1>
+      <h2>${escapeHtml(settings.legalName || '')}</h2>
+      <h2>CNPJ ${escapeHtml(settings.cnpj || '-')}</h2>
+      <h2>${escapeHtml([settings.street, settings.number, settings.neighborhood, settings.city, settings.state].filter(Boolean).join(', '))}</h2>
+      <div class="line"></div>
+      <div class="meta"><p><b>Cupom:</b> ${escapeHtml(doc.type)} ${escapeHtml(doc.series || '-')}/${escapeHtml(doc.number || '-')}</p><p><b>Data:</b> ${new Date(doc.issuedAt || doc.createdAt).toLocaleString('pt-BR')}</p><p><b>Mesa:</b> ${escapeHtml(doc.tab?.table?.number || '-')} <b>Comanda:</b> ${escapeHtml(doc.tab?.number || '-')}</p><p><b>Cliente:</b> ${escapeHtml(doc.tab?.customer?.name || 'Consumidor nao identificado')}</p></div>
+      <div class="line"></div>
+      <table><thead><tr><th>Item</th><th>Unit.</th><th>Total</th></tr></thead><tbody>${itemLines}</tbody></table>
+      <div class="line"></div>
+      <div class="totals"><p><span>Subtotal</span><span>${money(subtotal)}</span></p><p><span>Servico</span><span>${money(serviceFee)}</span></p><p><strong>Total</strong><strong>${money(total)}</strong></p><p><span>Forma</span><span>${escapeHtml(method)}</span></p></div>
+      <div class="line"></div>
+      <div class="fiscal">${fiscalInfo}</div>
+      <div class="line"></div>
+      <p class="footer">Obrigado pela preferencia.</p>
+      <button class="no-print" onclick="window.print()">Imprimir</button>
+      <script>window.onload=function(){window.focus();window.print();}</script>
+    </body></html>`);
+    printWindow.document.close();
+  }
+
   function openEmployee(current) {
     setEmployee(current ? { ...current, password: '' } : { ...blankEmployee, permissions: [...blankEmployee.permissions] });
     setEmployeeModal(true);
@@ -154,7 +193,7 @@ export default function Settings() {
         <div className="integration-body">
           <form className="form-grid courier-form" onSubmit={submitCourier}><label>Nome<input required value={courier.name} onChange={event => setCourier({ ...courier, name: event.target.value })} /></label><label>Telefone<input required value={courier.phone} onChange={event => setCourier({ ...courier, phone: event.target.value })} /></label><label>Veículo<input value={courier.vehicle} onChange={event => setCourier({ ...courier, vehicle: event.target.value })} /></label><label>Placa<input value={courier.plate} onChange={event => setCourier({ ...courier, plate: event.target.value })} /></label><button className="primary"><Save /> Salvar entregador</button></form>
           <div className="table-responsive"><table><thead><tr><th>Entregador</th><th>Veículo</th><th>Status</th><th>Ações</th></tr></thead><tbody>{data.integrations.couriers.map(item => <tr key={item.id}><td><b>{item.name}</b><small>{item.phone}</small></td><td>{item.vehicle || '-'}<small>{item.plate || ''}</small></td><td><span className={`command-card-status ${item.active ? 'free' : 'inactive'}`}>{item.active ? 'Ativo' : 'Inativo'}</span></td><td><div className="row-actions"><button onClick={() => setCourier({ id: item.id, name: item.name, phone: item.phone, vehicle: item.vehicle || '', plate: item.plate || '', active: item.active })}><Pencil /> Editar</button><button onClick={() => saveCourier(item.id, { active: !item.active })}><Power /> {item.active ? 'Desativar' : 'Ativar'}</button></div></td></tr>)}</tbody></table></div>
-          <div className="table-responsive"><table><thead><tr><th>Cupom</th><th>Valor</th><th>Status</th><th>Ações</th></tr></thead><tbody>{data.integrations.fiscalDocuments.map(doc => <tr key={doc.id}><td><b>{doc.type} {doc.series ? `${doc.series}/${doc.number || '-'}` : ''}</b><small>{doc.tab?.table ? `Mesa ${doc.tab.table.number}` : 'Pagamento'}</small></td><td>{Number(doc.amount || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</td><td><span className="status-badge">{statusLabels[doc.status] || doc.status}</span><small>{doc.errorMessage || ''}</small></td><td>{['NEEDS_CONFIGURATION', 'PENDING'].includes(doc.status) && <button className="secondary" onClick={() => issueFiscalDocument(doc.id)}><ReceiptText /> Emitir</button>}</td></tr>)}</tbody></table></div>
+          <div className="table-responsive"><table><thead><tr><th>Cupom</th><th>Valor</th><th>Status</th><th>Ações</th></tr></thead><tbody>{data.integrations.fiscalDocuments.map(doc => <tr key={doc.id}><td><b>{doc.type} {doc.series ? `${doc.series}/${doc.number || '-'}` : ''}</b><small>{doc.tab?.table ? `Mesa ${doc.tab.table.number}` : 'Pagamento'}</small></td><td>{Number(doc.amount || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</td><td><span className="status-badge">{statusLabels[doc.status] || doc.status}</span><small>{doc.errorMessage || ''}</small></td><td><div className="row-actions">{['NEEDS_CONFIGURATION', 'PENDING'].includes(doc.status) && <button className="secondary" onClick={() => issueFiscalDocument(doc.id)}><ReceiptText /> Emitir</button>}<button className="secondary" onClick={() => printFiscalDocument(doc)}><Printer /> Imprimir</button></div></td></tr>)}</tbody></table></div>
         </div>
       </section>
 
@@ -176,6 +215,10 @@ export default function Settings() {
 
 function LinkRow({ label, value, copied, onCopy }) {
   return <div className="access-link"><span><b>{label}</b><small>{value}</small></span><button className="icon-btn" onClick={() => onCopy(value, label)}>{copied === label ? <Check /> : <Copy />}</button><a className="icon-btn" href={value} target="_blank" rel="noreferrer"><ExternalLink /></a></div>;
+}
+
+function escapeHtml(value) {
+  return String(value ?? '').replace(/[&<>"']/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' })[char]);
 }
 
 function resizeLogo(file) {
