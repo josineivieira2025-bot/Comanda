@@ -106,6 +106,7 @@ export function AppProvider({ children }) {
   async function payReceivable(tabId, method, details = {}) { const result = await api(`/finance/receivables/${tabId}/pay`, { method: 'POST', body: { method, ...details } }); await refresh(); notify('Pagamento confirmado, mesa liberada e cupom fiscal processado.'); return result; }
   async function saveSettings(values) { const settings = await api('/settings', { method: 'PUT', body: { name: values.restaurant, city: values.city, logoUrl: values.logoUrl || null, serviceFee: Number(values.serviceFee) } }); setData(current => ({ ...current, settings: { restaurant: settings.name, city: settings.city || '', logoUrl: settings.logoUrl || '', serviceFee: Number(settings.serviceFee), slug: settings.slug } })); notify('Configurações salvas no banco.'); }
   async function saveFiscalSettings(values) { await api('/integrations/fiscal-settings', { method: 'PUT', body: values }); await refresh(); notify('Configuração fiscal salva.'); }
+  async function uploadFiscalCertificate(values) { await api('/integrations/fiscal-certificate', { method: 'POST', body: values }); await refresh(); notify('Certificado A1 carregado com segurança.'); }
   async function saveIfoodIntegration(values) { await api('/integrations/ifood', { method: 'PUT', body: values }); await refresh(); notify('Integração iFood salva.'); }
   async function testIfoodIntegration() { await api('/integrations/ifood/test', { method: 'POST' }); await refresh(); notify('Credenciais iFood marcadas como conectadas.'); }
   async function saveCourier(id, values) { await api(id ? `/integrations/couriers/${id}` : '/integrations/couriers', { method: id ? 'PATCH' : 'POST', body: values }); await refresh(); notify(id ? 'Entregador atualizado.' : 'Entregador cadastrado.'); }
@@ -121,7 +122,7 @@ export function AppProvider({ children }) {
       .filter(order => activeTabIds.includes(order.tabId) && order.status !== 'cancelled')
       .reduce((sum, order) => sum + orderTotal(order), 0);
   };
-  const value = useMemo(() => ({ data, setData, user, ready, login, register, logout, refresh, reset: refresh, toast, notify, mutate, remove, createOrder, updateOrder, moveStock, openTable, createTab, createCommandCards, toggleCommandCard, cashAction, getReceivablePix, payReceivable, saveSettings, saveFiscalSettings, saveIfoodIntegration, testIfoodIntegration, saveCourier, issueFiscalDocument, resolveCall, saveEmployee, can: permission => can(user, permission), orderTotal, tableTotal }), [data, user, ready, toast, notify, refresh]);
+  const value = useMemo(() => ({ data, setData, user, ready, login, register, logout, refresh, reset: refresh, toast, notify, mutate, remove, createOrder, updateOrder, moveStock, openTable, createTab, createCommandCards, toggleCommandCard, cashAction, getReceivablePix, payReceivable, saveSettings, saveFiscalSettings, uploadFiscalCertificate, saveIfoodIntegration, testIfoodIntegration, saveCourier, issueFiscalDocument, resolveCall, saveEmployee, can: permission => can(user, permission), orderTotal, tableTotal }), [data, user, ready, toast, notify, refresh]);
   return <Context.Provider value={value}>{children}<div className="global-request-indicator">Processando sua ação</div>{toast && <div className="toast">✓ {toast}</div>}</Context.Provider>;
 }
 

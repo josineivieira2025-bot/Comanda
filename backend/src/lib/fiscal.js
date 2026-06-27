@@ -1,3 +1,5 @@
+import { emitNfceDirect } from './sefazDirect.js';
+
 function hasFiscalCompany(settings) {
   return !!(settings?.enabled && settings.cnpj && settings.legalName && settings.cep && settings.street && settings.number && settings.city && settings.state);
 }
@@ -5,7 +7,12 @@ function hasFiscalCompany(settings) {
 export function fiscalReadiness(settings) {
   if (!settings?.enabled) return { ready: false, status: 'NEEDS_CONFIGURATION', message: 'Ative a emissao fiscal e preencha os dados da empresa.' };
   if (!hasFiscalCompany(settings)) return { ready: false, status: 'NEEDS_CONFIGURATION', message: 'Preencha CNPJ, razao social e endereco fiscal.' };
-  if (!settings.provider || settings.provider === 'manual') return { ready: false, status: 'NEEDS_CONFIGURATION', message: 'Configure um provedor fiscal real para autorizar na SEFAZ.' };
+  if (!settings.provider || settings.provider === 'manual') return { ready: false, status: 'NEEDS_CONFIGURATION', message: 'Configure emissao direta SEFAZ ou um provedor fiscal real.' };
+  if (settings.provider === 'sefaz_direct') {
+    if (!settings.certificatePfxEncrypted || !settings.certificatePasswordEncrypted) return { ready: false, status: 'NEEDS_CONFIGURATION', message: 'Envie o certificado A1 .pfx e senha.' };
+    if (!settings.sefazAuthorizationUrl) return { ready: false, status: 'NEEDS_CONFIGURATION', message: 'Informe a URL SOAP de autorizacao NFC-e da SEFAZ.' };
+    return { ready: true, status: 'PENDING', message: 'Pronto para emissao direta em homologacao/SEFAZ.' };
+  }
   if (!settings.providerToken) return { ready: false, status: 'NEEDS_CONFIGURATION', message: 'Informe o token do provedor fiscal homologado.' };
   if (!settings.providerEndpoint && !['focusnfe', 'focus'].includes(settings.provider.toLowerCase())) return { ready: false, status: 'NEEDS_CONFIGURATION', message: 'Informe o endpoint de emissao do provedor fiscal.' };
   return { ready: true, status: 'PENDING', message: 'Documento pronto para envio ao provedor fiscal.' };
@@ -144,6 +151,26 @@ export async function emitFiscalDocument(prisma, documentId) {
   });
   const url = providerUrl(settings, fresh);
   const payload = buildFiscalPayload(fresh);
+  if (settings.provider === 'sefaz_direct') {
+    try {
+      const result = await emitNfceDirect(fresh);
+      const authorized = ['100', '150'].includes(result.statusCode);
+      return prisma.fiscalDocument.update({
+        where: { id: fresh.id },
+        data: {
+          status: authorized ? 'AUTHORIZED' : 'REJECTED',
+          accessKey: result.accessKey || result.key || null,
+          protocol: result.protocol || null,
+          requestXml: result.requestXml || null,
+          responseXml: result.responseXml || null,
+          issuedAt: authorized ? new Date() : null,
+          errorMessage: result.reason || `SEFAZ retornou cStat ${result.statusCode || '-'}`
+        }
+      });
+    } catch (error) {
+      return prisma.fiscalDocument.update({ where: { id: fresh.id }, data: { status: 'REJECTED', errorMessage: `Falha na emissao direta SEFAZ: ${error.message}` } });
+    }
+  }
   const auth = ['focusnfe', 'focus'].includes(settings.provider.toLowerCase())
     ? `Basic ${Buffer.from(`${settings.providerToken}:`).toString('base64')}`
     : `Bearer ${settings.providerToken}`;

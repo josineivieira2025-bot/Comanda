@@ -19,7 +19,7 @@ import { auth, moduleAccess } from './middleware/auth.js';
 export function createApp() {
   const app = express();
   app.use(cors({ origin: (process.env.FRONTEND_URL || 'http://localhost:5173').split(','), credentials: true }));
-  app.use(express.json({ limit: '2mb' }));
+  app.use(express.json({ limit: '8mb' }));
   app.get('/health', (_req, res) => res.json({ status: 'ok', service: 'orbe-api', time: new Date() }));
   app.use('/api/auth', authRoutes);
   app.use('/api/users', userRoutes);

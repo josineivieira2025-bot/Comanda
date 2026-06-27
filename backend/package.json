@@ -12,17 +12,22 @@
     "db:deploy": "prisma migrate deploy",
     "db:seed": "node prisma/seed.js"
   },
-  "prisma": { "seed": "node prisma/seed.js" },
+  "prisma": {
+    "seed": "node prisma/seed.js"
+  },
   "dependencies": {
-    "@prisma/client": "latest",
     "@prisma/adapter-pg": "latest",
+    "@prisma/client": "latest",
+    "@xmldom/xmldom": "^0.9.10",
     "bcryptjs": "latest",
     "cors": "latest",
     "dotenv": "latest",
     "express": "latest",
     "jsonwebtoken": "latest",
+    "node-forge": "^1.4.0",
     "pg": "latest",
     "socket.io": "latest",
+    "xml-crypto": "^6.1.2",
     "zod": "latest"
   },
   "devDependencies": {

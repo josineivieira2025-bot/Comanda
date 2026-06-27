@@ -39,7 +39,12 @@ function blankFiscal(current = {}, settings = {}) {
     nfeNextNumber: current?.nfeNextNumber || 1,
     pixKey: current?.pixKey || '',
     pixMerchantName: current?.pixMerchantName || settings.restaurant || '',
-    pixMerchantCity: current?.pixMerchantCity || settings.city || ''
+    pixMerchantCity: current?.pixMerchantCity || settings.city || '',
+    sefazAuthorizationUrl: current?.sefazAuthorizationUrl || '',
+    sefazSoapAction: current?.sefazSoapAction || '',
+    sefazStateCode: current?.sefazStateCode || '13',
+    cscId: current?.cscId || '',
+    cscToken: ''
   };
 }
 
@@ -48,11 +53,12 @@ function blankIfood(current = {}) {
 }
 
 export default function Settings() {
-  const { data, user, saveSettings, saveEmployee, saveFiscalSettings, saveIfoodIntegration, testIfoodIntegration, saveCourier, issueFiscalDocument, notify, can } = useApp();
+  const { data, user, saveSettings, saveEmployee, saveFiscalSettings, uploadFiscalCertificate, saveIfoodIntegration, testIfoodIntegration, saveCourier, issueFiscalDocument, notify, can } = useApp();
   const [form, setForm] = useState(data.settings);
   const [fiscal, setFiscal] = useState(blankFiscal());
   const [ifood, setIfood] = useState(blankIfood());
   const [courier, setCourier] = useState(blankCourier);
+  const [certificatePassword, setCertificatePassword] = useState('');
   const [copied, setCopied] = useState('');
   const [employeeModal, setEmployeeModal] = useState(false);
   const [employee, setEmployee] = useState(blankEmployee);
@@ -63,6 +69,15 @@ export default function Settings() {
   async function submitFiscal(event) { event.preventDefault(); await saveFiscalSettings({ ...fiscal, certificateExpiresAt: fiscal.certificateExpiresAt || null, nfceSeries: Number(fiscal.nfceSeries), nfceNextNumber: Number(fiscal.nfceNextNumber), nfeSeries: Number(fiscal.nfeSeries), nfeNextNumber: Number(fiscal.nfeNextNumber) }); }
   async function submitIfood(event) { event.preventDefault(); await saveIfoodIntegration(ifood); }
   async function submitCourier(event) { event.preventDefault(); await saveCourier(courier.id, courier); setCourier(blankCourier); }
+  async function chooseCertificate(event) {
+    const file = event.target.files?.[0];
+    event.target.value = '';
+    if (!file) return;
+    if (!certificatePassword) return notify('Informe a senha do certificado A1 antes de enviar.');
+    const pfxBase64 = await fileToBase64(file);
+    await uploadFiscalCertificate({ pfxBase64, password: certificatePassword, certificateName: file.name });
+    setCertificatePassword('');
+  }
   async function chooseLogo(event) {
     const file = event.target.files?.[0];
     event.target.value = '';
@@ -173,7 +188,35 @@ export default function Settings() {
         <div className="panel-head"><div><h2><ReceiptText /> Nota fiscal e cupom</h2><p>NFC-e/NF-e com dados fiscais da empresa</p></div><span className={`status-badge status-${data.integrations.fiscalReadiness?.ready ? 'ready' : 'attention'}`}>{data.integrations.fiscalReadiness?.ready ? 'Pronto' : 'Configurar'}</span></div>
         <div className="integration-body">
           <div className="toggle-row"><label className="check-field"><input type="checkbox" checked={fiscal.enabled} onChange={event => setFiscal({ ...fiscal, enabled: event.target.checked })} /><span /></label><b>Ativar emissão fiscal</b><label className="check-field"><input type="checkbox" checked={fiscal.autoIssueCupom} onChange={event => setFiscal({ ...fiscal, autoIssueCupom: event.target.checked })} /><span /></label><b>Gerar cupom ao receber</b></div>
-          <div className="form-grid"><label>CNPJ<input value={fiscal.cnpj} onChange={event => setFiscal({ ...fiscal, cnpj: event.target.value })} /></label><label>Razão social<input value={fiscal.legalName} onChange={event => setFiscal({ ...fiscal, legalName: event.target.value })} /></label><label>Nome fantasia<input value={fiscal.tradeName} onChange={event => setFiscal({ ...fiscal, tradeName: event.target.value })} /></label><label>Regime tributário<input value={fiscal.taxRegime} onChange={event => setFiscal({ ...fiscal, taxRegime: event.target.value })} /></label><label>CEP<input value={fiscal.cep} onChange={event => setFiscal({ ...fiscal, cep: event.target.value })} /></label><label>Rua<input value={fiscal.street} onChange={event => setFiscal({ ...fiscal, street: event.target.value })} /></label><label>Número<input value={fiscal.number} onChange={event => setFiscal({ ...fiscal, number: event.target.value })} /></label><label>Bairro<input value={fiscal.neighborhood} onChange={event => setFiscal({ ...fiscal, neighborhood: event.target.value })} /></label><label>Cidade<input value={fiscal.city} onChange={event => setFiscal({ ...fiscal, city: event.target.value })} /></label><label>UF<input maxLength="2" value={fiscal.state} onChange={event => setFiscal({ ...fiscal, state: event.target.value.toUpperCase() })} /></label><label>Ambiente<select value={fiscal.environment} onChange={event => setFiscal({ ...fiscal, environment: event.target.value })}><option value="HOMOLOGATION">Homologação</option><option value="PRODUCTION">Produção</option></select></label><label>Provedor fiscal<input value={fiscal.provider} onChange={event => setFiscal({ ...fiscal, provider: event.target.value })} /></label><label>Token do provedor<input type="password" placeholder="Mantém o token salvo se vazio" value={fiscal.providerToken} onChange={event => setFiscal({ ...fiscal, providerToken: event.target.value })} /></label><label>Certificado<input value={fiscal.certificateName} onChange={event => setFiscal({ ...fiscal, certificateName: event.target.value })} /></label><label>Série NFC-e<input type="number" min="1" value={fiscal.nfceSeries} onChange={event => setFiscal({ ...fiscal, nfceSeries: event.target.value })} /></label><label>Próximo número<input type="number" min="1" value={fiscal.nfceNextNumber} onChange={event => setFiscal({ ...fiscal, nfceNextNumber: event.target.value })} /></label></div>
+          <div className="form-grid">
+            <label>CNPJ<input value={fiscal.cnpj} onChange={event => setFiscal({ ...fiscal, cnpj: event.target.value })} /></label>
+            <label>Razão social<input value={fiscal.legalName} onChange={event => setFiscal({ ...fiscal, legalName: event.target.value })} /></label>
+            <label>Nome fantasia<input value={fiscal.tradeName} onChange={event => setFiscal({ ...fiscal, tradeName: event.target.value })} /></label>
+            <label>Regime tributário<input value={fiscal.taxRegime} onChange={event => setFiscal({ ...fiscal, taxRegime: event.target.value })} /></label>
+            <label>CEP<input value={fiscal.cep} onChange={event => setFiscal({ ...fiscal, cep: event.target.value })} /></label>
+            <label>Rua<input value={fiscal.street} onChange={event => setFiscal({ ...fiscal, street: event.target.value })} /></label>
+            <label>Número<input value={fiscal.number} onChange={event => setFiscal({ ...fiscal, number: event.target.value })} /></label>
+            <label>Bairro<input value={fiscal.neighborhood} onChange={event => setFiscal({ ...fiscal, neighborhood: event.target.value })} /></label>
+            <label>Cidade<input value={fiscal.city} onChange={event => setFiscal({ ...fiscal, city: event.target.value })} /></label>
+            <label>UF<input maxLength="2" value={fiscal.state} onChange={event => setFiscal({ ...fiscal, state: event.target.value.toUpperCase() })} /></label>
+            <label>Ambiente<select value={fiscal.environment} onChange={event => setFiscal({ ...fiscal, environment: event.target.value })}><option value="HOMOLOGATION">Homologação</option><option value="PRODUCTION">Produção</option></select></label>
+            <label>Emissão fiscal<select value={fiscal.provider} onChange={event => setFiscal({ ...fiscal, provider: event.target.value })}><option value="sefaz_direct">SEFAZ direta</option><option value="focusnfe">Focus NFe</option><option value="manual">Manual / recibo interno</option></select></label>
+            <label>URL SOAP autorização NFC-e<input placeholder="URL da SEFAZ AM homologação/produção" value={fiscal.sefazAuthorizationUrl} onChange={event => setFiscal({ ...fiscal, sefazAuthorizationUrl: event.target.value })} /></label>
+            <label>SOAP Action<input value={fiscal.sefazSoapAction} onChange={event => setFiscal({ ...fiscal, sefazSoapAction: event.target.value })} /></label>
+            <label>Código UF<input value={fiscal.sefazStateCode} onChange={event => setFiscal({ ...fiscal, sefazStateCode: event.target.value })} /></label>
+            <label>Endpoint provedor<input placeholder="Apenas para provedor externo" value={fiscal.providerEndpoint} onChange={event => setFiscal({ ...fiscal, providerEndpoint: event.target.value })} /></label>
+            <label>Token do provedor<input type="password" placeholder="Mantém o token salvo se vazio" value={fiscal.providerToken} onChange={event => setFiscal({ ...fiscal, providerToken: event.target.value })} /></label>
+            <label>ID CSC<input value={fiscal.cscId} onChange={event => setFiscal({ ...fiscal, cscId: event.target.value })} /></label>
+            <label>Token CSC<input type="password" placeholder={data.integrations.fiscalSettings?.hasCscToken ? 'CSC salvo' : 'Token CSC da NFC-e'} value={fiscal.cscToken} onChange={event => setFiscal({ ...fiscal, cscToken: event.target.value })} /></label>
+            <label>Chave PIX<input value={fiscal.pixKey} onChange={event => setFiscal({ ...fiscal, pixKey: event.target.value })} /></label>
+            <label>Nome PIX<input value={fiscal.pixMerchantName} onChange={event => setFiscal({ ...fiscal, pixMerchantName: event.target.value })} /></label>
+            <label>Cidade PIX<input value={fiscal.pixMerchantCity} onChange={event => setFiscal({ ...fiscal, pixMerchantCity: event.target.value })} /></label>
+            <label>Certificado<input readOnly value={data.integrations.fiscalSettings?.hasCertificate ? `${fiscal.certificateName || 'A1 carregado'} · válido até ${fiscal.certificateExpiresAt || '-'}` : 'Nenhum certificado A1 enviado'} /></label>
+            <label>Senha do A1<input type="password" value={certificatePassword} onChange={event => setCertificatePassword(event.target.value)} placeholder="Senha do .pfx" /></label>
+            <label className="secondary fiscal-file-button"><ImagePlus /> Enviar certificado A1<input type="file" accept=".pfx,.p12,application/x-pkcs12" onChange={chooseCertificate} /></label>
+            <label>Série NFC-e<input type="number" min="1" value={fiscal.nfceSeries} onChange={event => setFiscal({ ...fiscal, nfceSeries: event.target.value })} /></label>
+            <label>Próximo número<input type="number" min="1" value={fiscal.nfceNextNumber} onChange={event => setFiscal({ ...fiscal, nfceNextNumber: event.target.value })} /></label>
+          </div>
           <small className="integration-note">{data.integrations.fiscalReadiness?.message || 'Preencha os dados fiscais para liberar a fila de emissão.'}</small>
           {can('settings.edit') && <button className="primary"><Save /> Salvar fiscal</button>}
         </div>
@@ -219,6 +262,15 @@ function LinkRow({ label, value, copied, onCopy }) {
 
 function escapeHtml(value) {
   return String(value ?? '').replace(/[&<>"']/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' })[char]);
+}
+
+function fileToBase64(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result).split(',')[1]);
+    reader.onerror = () => reject(reader.error);
+    reader.readAsDataURL(file);
+  });
 }
 
 function resizeLogo(file) {

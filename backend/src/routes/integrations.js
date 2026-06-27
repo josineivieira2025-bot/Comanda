@@ -4,6 +4,8 @@ import { prisma } from '../lib/prisma.js';
 import { asyncHandler, HttpError } from '../lib/http.js';
 import { auth, permit } from '../middleware/auth.js';
 import { emitFiscalDocument, fiscalReadiness, queueFiscalDocument } from '../lib/fiscal.js';
+import { encryptBuffer, encryptText } from '../lib/cryptoBox.js';
+import { inspectPfx } from '../lib/sefazDirect.js';
 
 const router = Router();
 
@@ -34,7 +36,18 @@ const fiscalSchema = z.object({
   nfeNextNumber: z.coerce.number().int().positive().default(1),
   pixKey: z.string().trim().optional().nullable(),
   pixMerchantName: z.string().trim().optional().nullable(),
-  pixMerchantCity: z.string().trim().optional().nullable()
+  pixMerchantCity: z.string().trim().optional().nullable(),
+  sefazAuthorizationUrl: z.string().trim().optional().nullable(),
+  sefazSoapAction: z.string().trim().optional().nullable(),
+  sefazStateCode: z.string().trim().default('13'),
+  cscId: z.string().trim().optional().nullable(),
+  cscToken: z.string().trim().optional().nullable()
+});
+
+const certificateSchema = z.object({
+  pfxBase64: z.string().min(20),
+  password: z.string().min(1),
+  certificateName: z.string().trim().optional().nullable()
 });
 
 const ifoodSchema = z.object({
@@ -136,6 +149,18 @@ function publicIntegration(integration) {
   };
 }
 
+function publicFiscalSettings(settings) {
+  if (!settings) return null;
+  const { certificatePfxEncrypted, certificatePasswordEncrypted, cscTokenEncrypted, providerToken, ...safe } = settings;
+  return {
+    ...safe,
+    providerToken: providerToken ? `${providerToken.slice(0, 4)}...${providerToken.slice(-4)}` : null,
+    hasProviderToken: !!providerToken,
+    hasCertificate: !!certificatePfxEncrypted,
+    hasCscToken: !!cscTokenEncrypted
+  };
+}
+
 router.get('/', permit('settings.view', 'finance.view'), asyncHandler(async (req, res) => {
   const [fiscalSettings, ifood, couriers, deliveries, fiscalDocuments] = await Promise.all([
     prisma.fiscalSettings.findUnique({ where: { restaurantId: req.user.restaurantId } }),
@@ -161,19 +186,51 @@ router.get('/', permit('settings.view', 'finance.view'), asyncHandler(async (req
       take: 80
     })
   ]);
-  res.json({ fiscalSettings, fiscalReadiness: fiscalReadiness(fiscalSettings), ifood: publicIntegration(ifood), couriers, deliveries, fiscalDocuments });
+  res.json({ fiscalSettings: publicFiscalSettings(fiscalSettings), fiscalReadiness: fiscalReadiness(fiscalSettings), ifood: publicIntegration(ifood), couriers, deliveries, fiscalDocuments });
 }));
 
 router.put('/fiscal-settings', permit('settings.edit'), asyncHandler(async (req, res) => {
   const body = fiscalSchema.parse(req.body);
   const current = await prisma.fiscalSettings.findUnique({ where: { restaurantId: req.user.restaurantId } });
   const providerToken = body.providerToken || current?.providerToken || null;
+  const cscTokenEncrypted = body.cscToken ? encryptText(body.cscToken) : current?.cscTokenEncrypted || null;
+  const { cscToken, ...data } = body;
   const settings = await prisma.fiscalSettings.upsert({
     where: { restaurantId: req.user.restaurantId },
-    create: { ...body, providerToken, restaurantId: req.user.restaurantId },
-    update: { ...body, providerToken }
+    create: { ...data, providerToken, cscTokenEncrypted, restaurantId: req.user.restaurantId },
+    update: { ...data, providerToken, cscTokenEncrypted }
   });
-  res.json({ settings, readiness: fiscalReadiness(settings) });
+  res.json({ settings: publicFiscalSettings(settings), readiness: fiscalReadiness(settings) });
+}));
+
+router.post('/fiscal-certificate', permit('settings.edit'), asyncHandler(async (req, res) => {
+  const body = certificateSchema.parse(req.body);
+  const pfxBuffer = Buffer.from(body.pfxBase64, 'base64');
+  const info = inspectPfx({ pfxBase64: body.pfxBase64, password: body.password });
+  const settings = await prisma.fiscalSettings.upsert({
+    where: { restaurantId: req.user.restaurantId },
+    create: {
+      restaurantId: req.user.restaurantId,
+      enabled: true,
+      provider: 'sefaz_direct',
+      certificateName: body.certificateName || 'certificado-a1.pfx',
+      certificatePfxEncrypted: encryptBuffer(pfxBuffer),
+      certificatePasswordEncrypted: encryptText(body.password),
+      certificateSubject: info.subject,
+      certificateSerial: info.serial,
+      certificateExpiresAt: info.expiresAt
+    },
+    update: {
+      provider: 'sefaz_direct',
+      certificateName: body.certificateName || 'certificado-a1.pfx',
+      certificatePfxEncrypted: encryptBuffer(pfxBuffer),
+      certificatePasswordEncrypted: encryptText(body.password),
+      certificateSubject: info.subject,
+      certificateSerial: info.serial,
+      certificateExpiresAt: info.expiresAt
+    }
+  });
+  res.json({ settings: publicFiscalSettings(settings), readiness: fiscalReadiness(settings) });
 }));
 
 router.put('/ifood', permit('settings.edit'), asyncHandler(async (req, res) => {
