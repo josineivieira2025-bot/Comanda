@@ -17,6 +17,7 @@
     "react-dom": "latest",
     "react-router-dom": "latest",
     "lucide-react": "latest",
+    "qrcode": "^1.5.4",
     "socket.io-client": "latest",
     "tailwindcss": "latest"
   },

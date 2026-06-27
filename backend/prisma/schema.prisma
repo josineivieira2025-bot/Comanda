@@ -342,6 +342,12 @@ model Payment {
   method PaymentMethod
   amount Decimal @db.Decimal(12,2)
   description String?
+  pixCode String? @map("pix_code")
+  cardBrand String? @map("card_brand")
+  cardAuthorization String? @map("card_authorization")
+  installments Int?
+  cashReceived Decimal? @map("cash_received") @db.Decimal(12,2)
+  changeAmount Decimal? @map("change_amount") @db.Decimal(12,2)
   createdAt DateTime @default(now()) @map("created_at")
   fiscalDocument FiscalDocument?
   @@index([restaurantId,createdAt])
@@ -356,6 +362,7 @@ model FiscalSettings {
   autoIssueCupom Boolean @default(true) @map("auto_issue_cupom")
   environment FiscalEnvironment @default(HOMOLOGATION)
   provider String @default("manual")
+  providerEndpoint String? @map("provider_endpoint")
   providerToken String? @map("provider_token")
   certificateName String? @map("certificate_name")
   certificateExpiresAt DateTime? @map("certificate_expires_at")
@@ -375,6 +382,9 @@ model FiscalSettings {
   nfceNextNumber Int @default(1) @map("nfce_next_number")
   nfeSeries Int @default(1) @map("nfe_series")
   nfeNextNumber Int @default(1) @map("nfe_next_number")
+  pixKey String? @map("pix_key")
+  pixMerchantName String? @map("pix_merchant_name")
+  pixMerchantCity String? @map("pix_merchant_city")
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
   @@map("fiscal_settings")

@@ -3,7 +3,7 @@ import { z } from 'zod';
 import { prisma } from '../lib/prisma.js';
 import { asyncHandler, HttpError } from '../lib/http.js';
 import { auth, permit } from '../middleware/auth.js';
-import { fiscalReadiness, queueFiscalDocument } from '../lib/fiscal.js';
+import { emitFiscalDocument, fiscalReadiness, queueFiscalDocument } from '../lib/fiscal.js';
 
 const router = Router();
 
@@ -12,6 +12,7 @@ const fiscalSchema = z.object({
   autoIssueCupom: z.boolean().default(true),
   environment: z.enum(['HOMOLOGATION', 'PRODUCTION']).default('HOMOLOGATION'),
   provider: z.string().trim().max(60).default('manual'),
+  providerEndpoint: z.string().trim().optional().nullable(),
   providerToken: z.string().trim().optional().nullable(),
   certificateName: z.string().trim().optional().nullable(),
   certificateExpiresAt: z.coerce.date().optional().nullable(),
@@ -30,7 +31,10 @@ const fiscalSchema = z.object({
   nfceSeries: z.coerce.number().int().positive().default(1),
   nfceNextNumber: z.coerce.number().int().positive().default(1),
   nfeSeries: z.coerce.number().int().positive().default(1),
-  nfeNextNumber: z.coerce.number().int().positive().default(1)
+  nfeNextNumber: z.coerce.number().int().positive().default(1),
+  pixKey: z.string().trim().optional().nullable(),
+  pixMerchantName: z.string().trim().optional().nullable(),
+  pixMerchantCity: z.string().trim().optional().nullable()
 });
 
 const ifoodSchema = z.object({
@@ -241,8 +245,8 @@ router.post('/fiscal-documents/:id/issue', permit('finance.edit', 'settings.edit
   const document = await prisma.fiscalDocument.findFirst({ where: { id: req.params.id, restaurantId: req.user.restaurantId } });
   if (!document) throw new HttpError(404, 'Documento fiscal nao encontrado');
   const settings = await prisma.fiscalSettings.findUnique({ where: { restaurantId: req.user.restaurantId } });
-  const updated = await prisma.$transaction(tx => queueFiscalDocument(tx, document, settings));
-  res.json(updated);
+  await prisma.$transaction(tx => queueFiscalDocument(tx, document, settings));
+  res.json(await emitFiscalDocument(prisma, document.id));
 }));
 
 export default router;

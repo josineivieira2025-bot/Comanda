@@ -17,6 +17,7 @@ function blankFiscal(current = {}, settings = {}) {
     autoIssueCupom: current?.autoIssueCupom ?? true,
     environment: current?.environment || 'HOMOLOGATION',
     provider: current?.provider || 'manual',
+    providerEndpoint: current?.providerEndpoint || '',
     providerToken: '',
     certificateName: current?.certificateName || '',
     certificateExpiresAt: current?.certificateExpiresAt ? current.certificateExpiresAt.slice(0, 10) : '',
@@ -35,7 +36,10 @@ function blankFiscal(current = {}, settings = {}) {
     nfceSeries: current?.nfceSeries || 1,
     nfceNextNumber: current?.nfceNextNumber || 1,
     nfeSeries: current?.nfeSeries || 1,
-    nfeNextNumber: current?.nfeNextNumber || 1
+    nfeNextNumber: current?.nfeNextNumber || 1,
+    pixKey: current?.pixKey || '',
+    pixMerchantName: current?.pixMerchantName || settings.restaurant || '',
+    pixMerchantCity: current?.pixMerchantCity || settings.city || ''
   };
 }
 
@@ -193,3 +197,4 @@ function resizeLogo(file) {
     image.src = source;
   });
 }
+

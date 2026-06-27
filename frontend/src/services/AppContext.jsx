@@ -102,7 +102,8 @@ export function AppProvider({ children }) {
   async function createCommandCards(start, end) { const cards = await api('/command-cards', { method: 'POST', body: { start: Number(start), end: Number(end) } }); await refresh(); notify(`${cards.length} comanda(s) cadastrada(s).`); return cards; }
   async function toggleCommandCard(id, active) { await api(`/command-cards/${id}`, { method: 'PATCH', body: { active } }); await refresh(); notify(active ? 'Comanda ativada.' : 'Comanda desativada.'); }
   async function cashAction(action, body) { const result = await api(`/finance/${action}`, { method: 'POST', body }); await refresh(); notify('Caixa atualizado.'); return result; }
-  async function payReceivable(tabId, method) { const result = await api(`/finance/receivables/${tabId}/pay`, { method: 'POST', body: { method } }); await refresh(); notify('Pagamento confirmado e mesa liberada.'); return result; }
+  async function getReceivablePix(tabId) { return api(`/finance/receivables/${tabId}/pix`); }
+  async function payReceivable(tabId, method, details = {}) { const result = await api(`/finance/receivables/${tabId}/pay`, { method: 'POST', body: { method, ...details } }); await refresh(); notify('Pagamento confirmado, mesa liberada e cupom fiscal processado.'); return result; }
   async function saveSettings(values) { const settings = await api('/settings', { method: 'PUT', body: { name: values.restaurant, city: values.city, logoUrl: values.logoUrl || null, serviceFee: Number(values.serviceFee) } }); setData(current => ({ ...current, settings: { restaurant: settings.name, city: settings.city || '', logoUrl: settings.logoUrl || '', serviceFee: Number(settings.serviceFee), slug: settings.slug } })); notify('Configurações salvas no banco.'); }
   async function saveFiscalSettings(values) { await api('/integrations/fiscal-settings', { method: 'PUT', body: values }); await refresh(); notify('Configuração fiscal salva.'); }
   async function saveIfoodIntegration(values) { await api('/integrations/ifood', { method: 'PUT', body: values }); await refresh(); notify('Integração iFood salva.'); }
@@ -120,7 +121,7 @@ export function AppProvider({ children }) {
       .filter(order => activeTabIds.includes(order.tabId) && order.status !== 'cancelled')
       .reduce((sum, order) => sum + orderTotal(order), 0);
   };
-  const value = useMemo(() => ({ data, setData, user, ready, login, register, logout, refresh, reset: refresh, toast, notify, mutate, remove, createOrder, updateOrder, moveStock, openTable, createTab, createCommandCards, toggleCommandCard, cashAction, payReceivable, saveSettings, saveFiscalSettings, saveIfoodIntegration, testIfoodIntegration, saveCourier, issueFiscalDocument, resolveCall, saveEmployee, can: permission => can(user, permission), orderTotal, tableTotal }), [data, user, ready, toast, notify, refresh]);
+  const value = useMemo(() => ({ data, setData, user, ready, login, register, logout, refresh, reset: refresh, toast, notify, mutate, remove, createOrder, updateOrder, moveStock, openTable, createTab, createCommandCards, toggleCommandCard, cashAction, getReceivablePix, payReceivable, saveSettings, saveFiscalSettings, saveIfoodIntegration, testIfoodIntegration, saveCourier, issueFiscalDocument, resolveCall, saveEmployee, can: permission => can(user, permission), orderTotal, tableTotal }), [data, user, ready, toast, notify, refresh]);
   return <Context.Provider value={value}>{children}<div className="global-request-indicator">Processando sua ação</div>{toast && <div className="toast">✓ {toast}</div>}</Context.Provider>;
 }
 
